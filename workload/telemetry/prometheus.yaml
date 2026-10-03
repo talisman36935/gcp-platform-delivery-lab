@@ -1,0 +1,12 @@
+global:
+  scrape_interval: 2s
+  evaluation_interval: 2s
+scrape_configs:
+  - job_name: report-workshop
+    static_configs:
+      - targets: ["api:9090"]
+        labels:
+          service: api
+      - targets: ["worker:9090"]
+        labels:
+          service: worker

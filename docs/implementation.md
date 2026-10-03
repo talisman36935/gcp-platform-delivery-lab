@@ -57,7 +57,11 @@ PostgreSQL, builds the image and executes HTTP/worker assertions, validates
 Terraform and checks rendered resource ownership. A green run proves only those
 checks, not GKE readiness or cloud IAM.
 
-Next: finish application ports/OpenAPI and artifact contracts; add local metrics,
+Local metrics and a strict baseline recorder now exist, including a CI check that
+collector unavailability fails evidence while the application still completes work.
+See [local observability](local-observability.md) for scope and reproduction.
+
+Next: finish OpenAPI and full artifact contracts; add correlated logs,
 traces and profiles; capture baseline/regression/recovery; implement cloud
 adapters; then qualify a bounded GCP create/run/destroy cycle. The original
 M0/M1 milestones are partial; M2–M6 remain outstanding.

@@ -13,6 +13,7 @@ import (
 	"github.com/talisman36935/gcp-platform-delivery-lab/workload/internal/application"
 	"github.com/talisman36935/gcp-platform-delivery-lab/workload/internal/httpapi"
 	"github.com/talisman36935/gcp-platform-delivery-lab/workload/internal/postgres"
+	"github.com/talisman36935/gcp-platform-delivery-lab/workload/internal/telemetry"
 )
 
 var revision = "development"
@@ -49,6 +50,12 @@ func run(ctx context.Context) error {
 	if mode == "migrate" {
 		return s.Migrate(ctx)
 	}
+	metrics := telemetry.New(mode, revision)
+	stopMetrics, err := metrics.Start(ctx, os.Getenv("METRICS_ADDR"))
+	if err != nil {
+		return err
+	}
+	defer stopMetrics()
 	if mode == "worker" {
 		ticker := time.NewTicker(200 * time.Millisecond)
 		defer ticker.Stop()
@@ -58,7 +65,7 @@ func run(ctx context.Context) error {
 				return nil
 			case <-ticker.C:
 				iteration, cancel := context.WithTimeout(ctx, 10*time.Second)
-				err := process(iteration, s)
+				err := process(iteration, s, metrics)
 				cancel()
 				if err != nil {
 					slog.Warn("processing iteration failed", "category", "processing")
@@ -70,7 +77,7 @@ func run(ctx context.Context) error {
 	if addr == "" {
 		addr = "127.0.0.1:8080"
 	}
-	srv := &http.Server{Addr: addr, Handler: httpapi.Handler(s, s.Pool.Ping), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 10 * time.Second, IdleTimeout: 30 * time.Second}
+	srv := &http.Server{Addr: addr, Handler: httpapi.Handler(s, s.Pool.Ping, metrics.InstrumentHTTP), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 10 * time.Second, IdleTimeout: 30 * time.Second}
 	finished := make(chan struct{})
 	defer close(finished)
 	go func() {
@@ -90,9 +97,14 @@ func run(ctx context.Context) error {
 	return err
 }
 
-func process(ctx context.Context, s *postgres.Store) error {
+func process(ctx context.Context, s *postgres.Store, metrics *telemetry.Metrics) error {
 	started := time.Now()
 	j, err := application.ProcessOne(ctx, s, revision)
+	attempt := 0
+	if j != nil {
+		attempt = j.Attempt
+	}
+	metrics.ObserveIteration(j != nil, attempt, err, time.Since(started))
 	if err != nil {
 		return err
 	}

@@ -41,14 +41,42 @@ jobs:
           go vet ./...
           go test -race ./...
       - name: Build and start local application
-        run: docker compose up --build -d
+        env:
+          APP_REVISION: ${{ github.sha }}
+        run: docker compose --profile observability up --build -d
       - name: End-to-end HTTP and worker assertions
         run: python3 smoke.py
+      - name: Evidence contract and measured local baseline
+        env:
+          SOURCE_REVISION: ${{ github.sha }}
+        run: |
+          python3 -m pip install jsonschema==4.23.0
+          python3 -m unittest discover -s evidence -v
+          python3 evidence/record.py --revision "$SOURCE_REVISION" --output output/baseline.json
+          python3 evidence/validate.py output/baseline.json
+      - name: Missing collector must fail evidence without failing the workload
+        env:
+          SOURCE_REVISION: ${{ github.sha }}
+        run: |
+          docker compose --profile observability stop prometheus
+          if python3 evidence/record.py --revision "$SOURCE_REVISION" --count 1 --output output/collector-outage.json; then
+            echo "Evidence incorrectly passed with the collector stopped"
+            exit 1
+          fi
+          python3 evidence/validate.py output/collector-outage.json
+          python3 -c 'import json; r=json.load(open("output/collector-outage.json")); assert r["completed_jobs"] == 1 and r["golden_reports_match"] and r["telemetry"]["api_metrics"] and r["telemetry"]["worker_metrics"] and not r["telemetry"]["prometheus_targets"] and r["result"] == "failed"'
+      - name: Retain local observations (not durable portfolio publication)
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: local-observations
+          path: workload/output/*.json
+          retention-days: 30
       - name: Diagnostics and cleanup
         if: always()
         run: |
-          docker compose logs --no-color --tail=100
-          docker compose down --volumes
+          docker compose --profile observability logs --no-color --tail=100
+          docker compose --profile observability down --volumes
   terraform:
     runs-on: ubuntu-24.04
     timeout-minutes: 10

@@ -17,7 +17,7 @@ type Repository = application.JobReaderWriter
 
 var keyPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{1,128}$`)
 
-func Handler(s Repository, ready func(context.Context) error) http.Handler {
+func Handler(s Repository, ready func(context.Context) error, middleware ...func(http.Handler) http.Handler) http.Handler {
 	m := http.NewServeMux()
 	m.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) { reply(w, 200, map[string]string{"status": "ok"}) })
 	m.HandleFunc("GET /readyz", func(w http.ResponseWriter, r *http.Request) {
@@ -78,12 +78,16 @@ func Handler(s Repository, ready func(context.Context) error) http.Handler {
 		}
 		reply(w, 200, j.Report)
 	})
+	var handler http.Handler = m
+	for _, wrap := range middleware {
+		handler = wrap(handler)
+	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 		defer cancel()
-		m.ServeHTTP(w, r.WithContext(ctx))
+		handler.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
 
