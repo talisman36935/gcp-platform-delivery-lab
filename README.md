@@ -13,7 +13,8 @@ application deployment. No GCP project has been provisioned by this repository.
 
 ## Try the application locally
 
-Requirements: Docker with Compose v2+, Python 3.10+, free localhost port 18080.
+Requirements: Docker with Compose v2+, Python 3.10+, free localhost ports
+18080, 19090 and 19091.
 The first build downloads public images and Go dependencies.
 
 ```sh

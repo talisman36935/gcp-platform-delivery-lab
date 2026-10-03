@@ -1,5 +1,25 @@
 # Verification record
 
+## Local metrics and collector-outage gate — 2026-10-03
+
+Source: `ce56202cfc03ce50382e4ea8d51c6de5b5b61032`.
+[Hosted run 37158571002](https://github.com/talisman36935/gcp-platform-delivery-lab/actions/runs/37158571002)
+passed the existing application/infrastructure gates plus the real Prometheus
+profile, metrics cardinality tests, strict evidence tests and recorder.
+
+- [Baseline observation](observations/ce56202/baseline.json): 10/10 jobs completed,
+  all golden reports matched, both process revisions matched, both collector
+  targets were up.
+- [Collector-outage observation](observations/ce56202/collector-outage.json):
+  one further job completed correctly and both process metrics remained
+  available; collector access failed and the evidence result was `failed`.
+  That failure was expected and explicitly asserted by CI.
+
+These are retained copies of the actual downloaded CI observations, not invented
+fixtures. They are small local smoke observations, not cloud evidence, signed
+bundles, performance benchmarks or proof of teardown. Their source revision and
+timestamps identify the historical run; subsequent revisions need their own checks.
+
 ## Initial foundation — 2026-10-03
 
 Source: `23b9632`.

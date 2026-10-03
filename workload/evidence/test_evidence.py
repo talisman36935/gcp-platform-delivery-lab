@@ -61,6 +61,10 @@ class EvidenceTests(unittest.TestCase):
         self.assertEqual(result["errors"], ["RuntimeError"])
         self.assertNotIn("SECRET", str(result))
 
+    def test_rejects_nonfinite_measurement(self):
+        with self.assertRaises(ValueError):
+            validate({**self.fixture, "completion_seconds": [float("nan")]})
+
 
 if __name__ == "__main__":
     unittest.main()

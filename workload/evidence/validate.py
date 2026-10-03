@@ -2,6 +2,7 @@
 
 from datetime import datetime
 import json
+import math
 from pathlib import Path
 import sys
 
@@ -14,6 +15,8 @@ def validate(record: dict) -> None:
     schema = json.loads(SCHEMA.read_text())
     Draft202012Validator.check_schema(schema)
     Draft202012Validator(schema, format_checker=FormatChecker()).validate(record)
+    if any(not math.isfinite(value) for value in record["completion_seconds"]):
+        raise ValueError("non-finite measurements are not valid evidence")
     if len(record["completion_seconds"]) != record["completed_jobs"]:
         raise ValueError("measurement count disagrees with completed count")
     if record["completed_jobs"] > record["requested_jobs"]:
