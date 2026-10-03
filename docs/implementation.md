@@ -13,10 +13,10 @@ This supersedes the third-repository recommendation in the original proposal.
 The domain package performs deterministic fixture analysis with no infrastructure
 dependencies. The HTTP adapter validates requests; PostgreSQL owns job state,
 idempotency, outbox and local queue. The process entry point wires API or worker.
-The initial HTTP repository port still uses storage adapter types; moving that
-port and job DTO into the application boundary is a near-term cleanup before
-adding cloud adapters. This is a small architecture foundation, not a claim of
-completed clean-architecture layering.
+Application ports depend only on domain types; neither the HTTP adapter nor
+worker use case imports PostgreSQL or its driver. Storage translates missing
+rows into domain errors. This keeps infrastructure details at the boundary
+before adding cloud adapters.
 
 Job submission and outbox insertion share a transaction. The local dispatcher
 atomically inserts a durable queue entry and marks its outbox row published.

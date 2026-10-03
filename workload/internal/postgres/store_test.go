@@ -8,7 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/talisman36935/gcp-platform-delivery-lab/workload/internal/domain"
 )
 
@@ -69,7 +68,7 @@ func TestDurability(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = s.Claim(ctx, "duplicate", time.Minute); !errors.Is(err, pgx.ErrNoRows) {
+	if _, err = s.Claim(ctx, "duplicate", time.Minute); !errors.Is(err, domain.ErrNotFound) {
 		t.Fatalf("active lease claimed: %v", err)
 	}
 	if _, err = s.Pool.Exec(ctx, "UPDATE jobs SET lease_until=now()-interval '1 second' WHERE id=$1", id); err != nil {
@@ -111,7 +110,7 @@ func TestDurability(t *testing.T) {
 			t.Fatal(e)
 		}
 	}
-	if _, err = s.Claim(ctx, "too-many", time.Minute); !errors.Is(err, pgx.ErrNoRows) {
+	if _, err = s.Claim(ctx, "too-many", time.Minute); !errors.Is(err, domain.ErrNotFound) {
 		t.Fatal(err)
 	}
 	var state string

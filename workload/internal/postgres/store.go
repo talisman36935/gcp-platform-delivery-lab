@@ -19,19 +19,10 @@ import (
 //go:embed schema.sql
 var schema string
 
-var ErrConflict = errors.New("idempotency key reused with a different request")
-var ErrStale = errors.New("processing lease expired or was superseded")
+var ErrConflict = domain.ErrConflict
+var ErrStale = domain.ErrStale
 
-type Job struct {
-	ID          string          `json:"id"`
-	Fixture     string          `json:"fixture"`
-	Algorithm   string          `json:"algorithm"`
-	State       string          `json:"state"`
-	Attempt     int             `json:"attempt"`
-	CreatedAt   time.Time       `json:"created_at"`
-	CompletedAt *time.Time      `json:"completed_at"`
-	Report      json.RawMessage `json:"-"`
-}
+type Job = domain.Job
 
 type Store struct{ Pool *pgxpool.Pool }
 
@@ -71,7 +62,11 @@ func scan(row pgx.Row) (Job, error) {
 }
 
 func (s *Store) Get(ctx context.Context, id string) (Job, error) {
-	return scan(s.Pool.QueryRow(ctx, "SELECT "+fields+" FROM jobs WHERE id=$1", id))
+	j, err := scan(s.Pool.QueryRow(ctx, "SELECT "+fields+" FROM jobs WHERE id=$1", id))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return Job{}, domain.ErrNotFound
+	}
+	return j, err
 }
 
 func (s *Store) Submit(ctx context.Context, key string, req domain.Request) (Job, error) {
@@ -142,7 +137,7 @@ func (s *Store) Claim(ctx context.Context, revision string, lease time.Duration)
 		if commitErr := tx.Commit(ctx); commitErr != nil {
 			return Job{}, commitErr
 		}
-		return Job{}, err
+		return Job{}, domain.ErrNotFound
 	}
 	if err != nil {
 		return Job{}, err

@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -11,8 +10,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/jackc/pgx/v5"
-	"github.com/talisman36935/gcp-platform-delivery-lab/workload/internal/domain"
+	"github.com/talisman36935/gcp-platform-delivery-lab/workload/internal/application"
 	"github.com/talisman36935/gcp-platform-delivery-lab/workload/internal/httpapi"
 	"github.com/talisman36935/gcp-platform-delivery-lab/workload/internal/postgres"
 )
@@ -93,24 +91,13 @@ func run(ctx context.Context) error {
 }
 
 func process(ctx context.Context, s *postgres.Store) error {
-	if err := s.Dispatch(ctx); err != nil {
-		return err
-	}
-	j, err := s.Claim(ctx, revision, 30*time.Second)
-	if errors.Is(err, pgx.ErrNoRows) {
-		return nil
-	}
-	if err != nil {
-		return err
-	}
 	started := time.Now()
-	report, err := domain.Analyze(j.Fixture)
+	j, err := application.ProcessOne(ctx, s, revision)
 	if err != nil {
 		return err
 	}
-	if err = s.Complete(ctx, j, report); err != nil {
-		return fmt.Errorf("complete: %w", err)
+	if j != nil {
+		slog.Info("job completed", "job_id", j.ID, "attempt", j.Attempt, "revision", revision, "processing_ms", time.Since(started).Milliseconds())
 	}
-	slog.Info("job completed", "job_id", j.ID, "attempt", j.Attempt, "revision", revision, "processing_ms", time.Since(started).Milliseconds())
 	return nil
 }

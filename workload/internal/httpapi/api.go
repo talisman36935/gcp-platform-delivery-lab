@@ -9,15 +9,11 @@ import (
 	"regexp"
 	"time"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/talisman36935/gcp-platform-delivery-lab/workload/internal/application"
 	"github.com/talisman36935/gcp-platform-delivery-lab/workload/internal/domain"
-	"github.com/talisman36935/gcp-platform-delivery-lab/workload/internal/postgres"
 )
 
-type Repository interface {
-	Submit(context.Context, string, domain.Request) (postgres.Job, error)
-	Get(context.Context, string) (postgres.Job, error)
-}
+type Repository = application.JobReaderWriter
 
 var keyPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{1,128}$`)
 
@@ -53,7 +49,7 @@ func Handler(s Repository, ready func(context.Context) error) http.Handler {
 			return
 		}
 		j, err := s.Submit(r.Context(), key, req)
-		if errors.Is(err, postgres.ErrConflict) {
+		if errors.Is(err, domain.ErrConflict) {
 			reply(w, 409, map[string]string{"error": "idempotency_conflict"})
 			return
 		}
@@ -96,7 +92,7 @@ func fail(w http.ResponseWriter, err error) bool {
 		return false
 	}
 	status, code := 503, "storage_unavailable"
-	if errors.Is(err, pgx.ErrNoRows) {
+	if errors.Is(err, domain.ErrNotFound) {
 		status, code = 404, "job_not_found"
 	}
 	reply(w, status, map[string]string{"error": code})

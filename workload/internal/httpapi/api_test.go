@@ -8,18 +8,16 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/talisman36935/gcp-platform-delivery-lab/workload/internal/domain"
-	"github.com/talisman36935/gcp-platform-delivery-lab/workload/internal/postgres"
 )
 
 type fakeStore struct{}
 
-func (fakeStore) Submit(context.Context, string, domain.Request) (postgres.Job, error) {
-	return postgres.Job{ID: "example", State: "pending"}, nil
+func (fakeStore) Submit(context.Context, string, domain.Request) (domain.Job, error) {
+	return domain.Job{ID: "example", State: "pending"}, nil
 }
-func (fakeStore) Get(context.Context, string) (postgres.Job, error) {
-	return postgres.Job{}, pgx.ErrNoRows
+func (fakeStore) Get(context.Context, string) (domain.Job, error) {
+	return domain.Job{}, domain.ErrNotFound
 }
 
 func TestContracts(t *testing.T) {
