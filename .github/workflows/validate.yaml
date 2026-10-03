@@ -1,0 +1,70 @@
+name: Validate
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: validate-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  workload:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: workshop
+          POSTGRES_PASSWORD: local-demo-only
+          POSTGRES_DB: workshop
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U workshop -d workshop"
+          --health-interval 2s --health-timeout 3s --health-retries 20
+    defaults:
+      run:
+        working-directory: workload
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff
+        with:
+          go-version-file: workload/go.mod
+          cache-dependency-path: workload/go.sum
+      - name: Format, vet and durable race tests
+        env:
+          TEST_DATABASE_URL: postgres://workshop:local-demo-only@localhost:5432/workshop?sslmode=disable
+        run: |
+          test -z "$(gofmt -l cmd internal)"
+          go vet ./...
+          go test -race ./...
+      - name: Build and start local application
+        run: docker compose up --build -d
+      - name: End-to-end HTTP and worker assertions
+        run: python3 smoke.py
+      - name: Diagnostics and cleanup
+        if: always()
+        run: |
+          docker compose logs --no-color --tail=100
+          docker compose down --volumes
+  terraform:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd
+        with:
+          terraform_version: 1.16.4
+      - run: terraform fmt -check -recursive infrastructure
+      - run: terraform -chdir=infrastructure/lab init -backend=false -input=false -lockfile=readonly
+      - run: terraform -chdir=infrastructure/lab validate
+      - name: Render disjoint Config Sync owners
+        run: |
+          python3 -m pip install PyYAML==6.0.2
+          kubectl kustomize gitops/platform > /tmp/platform.yaml
+          kubectl kustomize gitops/apps/report > /tmp/app.yaml
+          python3 scripts/check-ownership.py

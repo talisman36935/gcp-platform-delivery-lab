@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: report-contract
+  namespace: report-dev
+data:
+  implementation-stage: foundation
+  workload: report-workshop
+  algorithm: tokens-v1
+  cloud-workload-deployed: "false"

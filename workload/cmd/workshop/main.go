@@ -1,0 +1,116 @@
+package main
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"log/slog"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/talisman36935/gcp-platform-delivery-lab/workload/internal/domain"
+	"github.com/talisman36935/gcp-platform-delivery-lab/workload/internal/httpapi"
+	"github.com/talisman36935/gcp-platform-delivery-lab/workload/internal/postgres"
+)
+
+var revision = "development"
+
+func main() {
+	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer cancel()
+	if err := run(ctx); err != nil {
+		slog.Error("process failed", "category", "runtime")
+		os.Exit(1)
+	}
+}
+
+func run(ctx context.Context) error {
+	if len(os.Args) != 2 {
+		return errors.New("expected migrate, api or worker")
+	}
+	mode := os.Args[1]
+	if mode != "migrate" && mode != "api" && mode != "worker" {
+		return errors.New("invalid mode")
+	}
+	url := os.Getenv("DATABASE_URL")
+	if url == "" {
+		return errors.New("DATABASE_URL is required")
+	}
+	connect, cancel := context.WithTimeout(ctx, 10*time.Second)
+	s, err := postgres.Open(connect, url)
+	cancel()
+	if err != nil {
+		return err
+	}
+	defer s.Pool.Close()
+	if mode == "migrate" {
+		return s.Migrate(ctx)
+	}
+	if mode == "worker" {
+		ticker := time.NewTicker(200 * time.Millisecond)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-ctx.Done():
+				return nil
+			case <-ticker.C:
+				iteration, cancel := context.WithTimeout(ctx, 10*time.Second)
+				err := process(iteration, s)
+				cancel()
+				if err != nil {
+					slog.Warn("processing iteration failed", "category", "processing")
+				}
+			}
+		}
+	}
+	addr := os.Getenv("LISTEN_ADDR")
+	if addr == "" {
+		addr = "127.0.0.1:8080"
+	}
+	srv := &http.Server{Addr: addr, Handler: httpapi.Handler(s, s.Pool.Ping), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 10 * time.Second, IdleTimeout: 30 * time.Second}
+	finished := make(chan struct{})
+	defer close(finished)
+	go func() {
+		select {
+		case <-ctx.Done():
+			shutdown, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			_ = srv.Shutdown(shutdown)
+		case <-finished:
+		}
+	}()
+	slog.Info("API listening", "address", addr, "revision", revision)
+	err = srv.ListenAndServe()
+	if errors.Is(err, http.ErrServerClosed) {
+		return nil
+	}
+	return err
+}
+
+func process(ctx context.Context, s *postgres.Store) error {
+	if err := s.Dispatch(ctx); err != nil {
+		return err
+	}
+	j, err := s.Claim(ctx, revision, 30*time.Second)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	started := time.Now()
+	report, err := domain.Analyze(j.Fixture)
+	if err != nil {
+		return err
+	}
+	if err = s.Complete(ctx, j, report); err != nil {
+		return fmt.Errorf("complete: %w", err)
+	}
+	slog.Info("job completed", "job_id", j.ID, "attempt", j.Attempt, "revision", revision, "processing_ms", time.Since(started).Milliseconds())
+	return nil
+}

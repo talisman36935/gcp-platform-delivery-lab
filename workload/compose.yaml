@@ -1,0 +1,42 @@
+name: report-workshop
+x-app: &app
+  build: .
+  environment:
+    DATABASE_URL: postgres://workshop:local-demo-only@db:5432/workshop?sslmode=disable
+  read_only: true
+  cap_drop: [ALL]
+  security_opt: [no-new-privileges:true]
+services:
+  db:
+    image: postgres:18-alpine
+    environment:
+      POSTGRES_USER: workshop
+      POSTGRES_PASSWORD: local-demo-only
+      POSTGRES_DB: workshop
+    volumes: [database:/var/lib/postgresql]
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U workshop -d workshop]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+  migrate:
+    <<: *app
+    command: [migrate]
+    depends_on:
+      db: {condition: service_healthy}
+  api:
+    <<: *app
+    environment:
+      DATABASE_URL: postgres://workshop:local-demo-only@db:5432/workshop?sslmode=disable
+      LISTEN_ADDR: 0.0.0.0:8080
+    command: [api]
+    ports: ["127.0.0.1:18080:8080"]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+  worker:
+    <<: *app
+    command: [worker]
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+volumes:
+  database:

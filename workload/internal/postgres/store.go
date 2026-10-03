@@ -1,0 +1,187 @@
+// Package postgres provides durable job state and the local-only queue adapter.
+package postgres
+
+import (
+	"context"
+	"crypto/rand"
+	_ "embed"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"time"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/talisman36935/gcp-platform-delivery-lab/workload/internal/domain"
+)
+
+//go:embed schema.sql
+var schema string
+
+var ErrConflict = errors.New("idempotency key reused with a different request")
+var ErrStale = errors.New("processing lease expired or was superseded")
+
+type Job struct {
+	ID          string          `json:"id"`
+	Fixture     string          `json:"fixture"`
+	Algorithm   string          `json:"algorithm"`
+	State       string          `json:"state"`
+	Attempt     int             `json:"attempt"`
+	CreatedAt   time.Time       `json:"created_at"`
+	CompletedAt *time.Time      `json:"completed_at"`
+	Report      json.RawMessage `json:"-"`
+}
+
+type Store struct{ Pool *pgxpool.Pool }
+
+func Open(ctx context.Context, url string) (*Store, error) {
+	p, err := pgxpool.New(ctx, url)
+	if err != nil {
+		return nil, err
+	}
+	if err = p.Ping(ctx); err != nil {
+		p.Close()
+		return nil, err
+	}
+	return &Store{Pool: p}, nil
+}
+
+func (s *Store) Migrate(ctx context.Context) error {
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	if _, err = tx.Exec(ctx, "SELECT pg_advisory_xact_lock(194001)"); err != nil {
+		return err
+	}
+	if _, err = tx.Exec(ctx, schema); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}
+
+const fields = "id,fixture,algorithm,state,attempt,created_at,completed_at,report"
+
+func scan(row pgx.Row) (Job, error) {
+	var j Job
+	err := row.Scan(&j.ID, &j.Fixture, &j.Algorithm, &j.State, &j.Attempt, &j.CreatedAt, &j.CompletedAt, &j.Report)
+	return j, err
+}
+
+func (s *Store) Get(ctx context.Context, id string) (Job, error) {
+	return scan(s.Pool.QueryRow(ctx, "SELECT "+fields+" FROM jobs WHERE id=$1", id))
+}
+
+func (s *Store) Submit(ctx context.Context, key string, req domain.Request) (Job, error) {
+	if err := domain.Validate(req); err != nil {
+		return Job{}, err
+	}
+	data, err := json.Marshal(req)
+	if err != nil {
+		return Job{}, err
+	}
+	hash := domain.Hash(data)
+	var nonce [16]byte
+	if _, err = rand.Read(nonce[:]); err != nil {
+		return Job{}, err
+	}
+	id := hex.EncodeToString(nonce[:])
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return Job{}, err
+	}
+	defer tx.Rollback(ctx)
+	_, err = tx.Exec(ctx, `INSERT INTO jobs(id,idempotency_key,request_hash,fixture,algorithm) VALUES($1,$2,$3,$4,$5) ON CONFLICT(idempotency_key) DO NOTHING`, id, key, hash, req.Fixture, req.Algorithm)
+	if err != nil {
+		return Job{}, err
+	}
+	var actual string
+	if err = tx.QueryRow(ctx, "SELECT id,request_hash FROM jobs WHERE idempotency_key=$1", key).Scan(&id, &actual); err != nil {
+		return Job{}, err
+	}
+	if actual != hash {
+		return Job{}, ErrConflict
+	}
+	if _, err = tx.Exec(ctx, "INSERT INTO outbox(job_id) VALUES($1) ON CONFLICT DO NOTHING", id); err != nil {
+		return Job{}, err
+	}
+	if err = tx.Commit(ctx); err != nil {
+		return Job{}, err
+	}
+	return s.Get(ctx, id)
+}
+
+// Dispatch uses a database-local atomic handoff. Cloud queues need their own
+// publish/mark protocol and duplicate-delivery tests; this is not a cloud adapter.
+func (s *Store) Dispatch(ctx context.Context) error {
+	_, err := s.Pool.Exec(ctx, `WITH pending AS (
+ SELECT job_id FROM outbox WHERE published_at IS NULL ORDER BY job_id LIMIT 100 FOR UPDATE SKIP LOCKED
+), queued AS (
+ INSERT INTO local_queue(job_id) SELECT job_id FROM pending ON CONFLICT DO NOTHING
+) UPDATE outbox SET published_at=now() WHERE job_id IN (SELECT job_id FROM pending)`)
+	return err
+}
+
+func (s *Store) Claim(ctx context.Context, revision string, lease time.Duration) (Job, error) {
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return Job{}, err
+	}
+	defer tx.Rollback(ctx)
+	_, err = tx.Exec(ctx, `UPDATE jobs SET state='failed',completed_at=now() WHERE state='running' AND lease_until<=now() AND attempt>=5`)
+	if err != nil {
+		return Job{}, err
+	}
+	var id string
+	err = tx.QueryRow(ctx, `SELECT j.id FROM jobs j JOIN local_queue q ON q.job_id=j.id
+ WHERE q.available_at<=now() AND j.attempt<5 AND (j.state='pending' OR (j.state='running' AND j.lease_until<=now()))
+ ORDER BY j.created_at FOR UPDATE OF j SKIP LOCKED LIMIT 1`).Scan(&id)
+	if errors.Is(err, pgx.ErrNoRows) {
+		if commitErr := tx.Commit(ctx); commitErr != nil {
+			return Job{}, commitErr
+		}
+		return Job{}, err
+	}
+	if err != nil {
+		return Job{}, err
+	}
+	j, err := scan(tx.QueryRow(ctx, `UPDATE jobs SET state='running',attempt=attempt+1,lease_until=now()+$2::interval,revision=$3 WHERE id=$1 RETURNING `+fields, id, fmt.Sprintf("%f seconds", lease.Seconds()), revision))
+	if err != nil {
+		return Job{}, err
+	}
+	if _, err = tx.Exec(ctx, "INSERT INTO attempts(job_id,token,revision) VALUES($1,$2,$3)", j.ID, j.Attempt, revision); err != nil {
+		return Job{}, err
+	}
+	if err = tx.Commit(ctx); err != nil {
+		return Job{}, err
+	}
+	return j, nil
+}
+
+func (s *Store) Complete(ctx context.Context, j Job, report domain.Report) error {
+	data, err := json.Marshal(report)
+	if err != nil {
+		return err
+	}
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+	tag, err := tx.Exec(ctx, `UPDATE jobs SET state='succeeded',report=$3,completed_at=now(),lease_until=NULL WHERE id=$1 AND attempt=$2 AND state='running' AND lease_until>now()`, j.ID, j.Attempt, data)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() != 1 {
+		return ErrStale
+	}
+	if _, err = tx.Exec(ctx, "UPDATE attempts SET completed_at=now() WHERE job_id=$1 AND token=$2", j.ID, j.Attempt); err != nil {
+		return err
+	}
+	if _, err = tx.Exec(ctx, "DELETE FROM local_queue WHERE job_id=$1", j.ID); err != nil {
+		return err
+	}
+	return tx.Commit(ctx)
+}

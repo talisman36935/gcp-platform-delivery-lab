@@ -1,0 +1,39 @@
+# This first slice delegates only a ConfigMap. Expand the Role alongside real
+# workload resources; never grant a namespace reconciler cluster-admin.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: report-config-writer
+  namespace: report-dev
+rules:
+  - apiGroups: [""]
+    resources: [configmaps]
+    verbs: [get, list, watch, create, update, patch, delete]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: report-config-writer
+  namespace: report-dev
+subjects:
+  - kind: ServiceAccount
+    name: ns-reconciler-report-dev-report
+    namespace: config-management-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: report-config-writer
+---
+apiVersion: configsync.gke.io/v1beta1
+kind: RepoSync
+metadata:
+  name: report
+  namespace: report-dev
+spec:
+  sourceFormat: unstructured
+  sourceType: git
+  git:
+    repo: https://github.com/talisman36935/gcp-platform-delivery-lab
+    branch: main
+    dir: gitops/apps/report
+    auth: none
