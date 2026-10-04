@@ -3,7 +3,7 @@ locals {
   apis = toset([
     "compute.googleapis.com", "container.googleapis.com",
     "gkehub.googleapis.com", "anthosconfigmanagement.googleapis.com",
-    "gkeconnect.googleapis.com", "iam.googleapis.com",
+    "gkeconnect.googleapis.com",
     "logging.googleapis.com", "monitoring.googleapis.com",
   ])
 }

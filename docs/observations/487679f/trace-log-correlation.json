@@ -1,0 +1,9 @@
+{
+  "verification": "local-compose",
+  "source_revision": "487679ffcd7125f1f1fd7878d5d84401bc7d6819",
+  "trace_id": "1247bd6c5fcbef3e8123182193700d82",
+  "matched_log_records": {
+    "api": 1,
+    "worker": 1
+  }
+}

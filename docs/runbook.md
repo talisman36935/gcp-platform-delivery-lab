@@ -30,7 +30,7 @@ because validate passes. Required outstanding gates:
 
 1. Confirm a dedicated project, billing scope, region/zone, operator egress CIDR,
    per-run budget and maximum lifetime.
-2. Implement separate remote-state and short-lived CI federation bootstrap.
+2. Activate and qualify the [separate state/federation bootstrap](cloud-bootstrap.md).
    Never commit state, plans, service-account keys or environment credentials.
 3. Qualify the selected GKE/Config Sync versions and fleet RBAC behavior.
 4. Add application cloud IAM, Pub/Sub/GCS resources and adapters, image release

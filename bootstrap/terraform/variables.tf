@@ -1,0 +1,25 @@
+variable "project_id" {
+  description = "Approved dedicated existing lab project."
+  type        = string
+}
+variable "region" {
+  description = "Approved region for retained state storage."
+  type        = string
+}
+variable "state_bucket_name" {
+  description = "Globally unique, public-safe name for private retained Terraform state."
+  type        = string
+  validation {
+    condition     = can(regex("^[a-z][a-z0-9-]{2,61}[a-z0-9]$", var.state_bucket_name))
+    error_message = "Provide a safe explicit bucket name."
+  }
+}
+variable "approved_project_roles" {
+  description = "Separately reviewed cloud apply roles. Empty grants state access only."
+  type        = set(string)
+  default     = []
+  validation {
+    condition     = alltrue([for role in var.approved_project_roles : startswith(role, "roles/") && !contains(["roles/owner", "roles/editor"], role)])
+    error_message = "Use explicitly reviewed predefined roles; Owner and Editor are forbidden."
+  }
+}

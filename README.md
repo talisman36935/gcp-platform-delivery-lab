@@ -53,7 +53,7 @@ Do not use this command against another Compose project.
 | --- | --- | --- |
 | Workload | API, PostgreSQL outbox/local queue, worker, fenced attempts, report | Pub/Sub/GCS adapters, object publication recovery |
 | Tests | Golden output, HTTP contracts, concurrent idempotency, leases/retries, Compose smoke | Cloud queue contracts, process-kill experiment |
-| GCP | Pinned Terraform provider, VPC/NAT/private nodes, fleet/Config Sync bootstrap | Actual plan/apply, remote state/federation, cloud teardown |
+| GCP | Terraform lab foundation plus private-state/federated-CI bootstrap | Actual plan/apply, identity qualification and cloud teardown |
 | GitOps | Root platform ownership, restricted namespace delegation, disjoint identity check | Live reconciliation, delegated negative test, promotion/rollback |
 | Observability | Structured logs, metrics/Prometheus, optional OTel collector/Tempo and CPU/heap capture | Continuous profiles, log backend and investigation dashboards |
 | Portfolio | Strict local baseline records, missing-collector gate, detailed Labs specification | Qualified durable cloud bundles and website ingestion |
@@ -62,6 +62,7 @@ Do not use this command against another Compose project.
 
 - [Current architecture and decisions](docs/implementation.md)
 - [Validation and GCP activation boundary](docs/runbook.md)
+- [Private state and federated CI bootstrap](docs/cloud-bootstrap.md)
 - [Local metrics, evidence recorder and outage check](docs/local-observability.md)
 - [Trace correlation and CPU/heap investigation](docs/local-tracing-profiling.md)
 - [Controlled regression and original-image recovery](docs/local-regression-recovery.md)

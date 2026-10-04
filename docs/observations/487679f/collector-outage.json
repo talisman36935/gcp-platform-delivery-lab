@@ -1,0 +1,27 @@
+{
+  "schema_version": "local-baseline-v1",
+  "run_id": "local-70b2283ef41d4d3ba66dad75721b899d",
+  "verification": "local-compose",
+  "scenario": "baseline-smoke",
+  "source_revision": "487679ffcd7125f1f1fd7878d5d84401bc7d6819",
+  "started_at": "2026-10-04T00:26:48.659839+00:00",
+  "finished_at": "2026-10-04T00:26:48.892513+00:00",
+  "result": "failed",
+  "requested_jobs": 1,
+  "completed_jobs": 1,
+  "completion_seconds": [
+    0.12413
+  ],
+  "fixture_sha256": "2522de9d1c28cf3a163c3703dbabb2b63009e5daa6a8d98f2aac85f577307bd5",
+  "golden_reports_match": true,
+  "telemetry": {
+    "api_metrics": true,
+    "worker_metrics": true,
+    "prometheus_targets": false
+  },
+  "errors": [
+    "URLError"
+  ],
+  "cloud_provisioned": false,
+  "teardown": "not_checked"
+}

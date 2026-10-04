@@ -109,7 +109,10 @@ jobs:
       - uses: hashicorp/setup-terraform@b9cd54a3c349d3f38e8881555d616ced269862dd
         with:
           terraform_version: 1.16.4
-      - run: terraform fmt -check -recursive infrastructure
+      - run: terraform fmt -check -recursive infrastructure bootstrap
+      - run: terraform -chdir=bootstrap/terraform init -backend=false -input=false -lockfile=readonly
+      - run: terraform -chdir=bootstrap/terraform validate
+      - run: terraform -chdir=bootstrap/terraform test
       - run: terraform -chdir=infrastructure/lab init -backend=false -input=false -lockfile=readonly
       - run: terraform -chdir=infrastructure/lab validate
       - name: Render disjoint Config Sync owners

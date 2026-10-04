@@ -1,0 +1,107 @@
+{
+  "verification": "local-compose",
+  "source_revision": "487679ffcd7125f1f1fd7878d5d84401bc7d6819",
+  "scenario": "compiled-variant-regression",
+  "fixture_sha256": "0f237c6f846e4f742fb9a0b89195b8f76dbd269470edb28e786c999eb15b91de",
+  "requested_per_phase": 12,
+  "load": "sequential-closed-loop",
+  "warmup_per_phase": 2,
+  "criteria": {
+    "regression_min_ratio": 1.5,
+    "regression_min_delta_seconds": 0.05,
+    "recovery_max_ratio": 2.0,
+    "recovery_jitter_seconds": 0.1
+  },
+  "started_at": "2026-10-04T00:25:58.563020+00:00",
+  "result": "passed",
+  "phases": [
+    {
+      "phase": "baseline",
+      "variant": "baseline",
+      "image_id": "sha256:438f6269b7078e997736456a16d3d7e2c9f1d7f178362c6fc637409aac047759",
+      "started_at": "2026-10-04T00:25:59.051546+00:00",
+      "finished_at": "2026-10-04T00:26:04.177255+00:00",
+      "completion_seconds": [
+        0.185009,
+        0.172969,
+        0.163389,
+        0.152565,
+        0.142896,
+        0.134266,
+        0.12596,
+        0.118389,
+        0.109073,
+        0.100223,
+        0.194168,
+        0.186708
+      ],
+      "median_seconds": 0.1477305,
+      "golden_reports_match": true,
+      "profile": {
+        "file": "baseline-cpu.pprof",
+        "bytes": 3940,
+        "sha256": "592e441de6a8b6fcd1b8be390b818d89310e39273047ed3fddbdab31707649d5"
+      }
+    },
+    {
+      "phase": "regressed",
+      "variant": "regressed",
+      "image_id": "sha256:872e85ee3191f3c88cfa19a2acd51c77a685ded6e9f0b5fc0699e560c830f553",
+      "started_at": "2026-10-04T00:26:33.039775+00:00",
+      "finished_at": "2026-10-04T00:26:41.379239+00:00",
+      "completion_seconds": [
+        0.663335,
+        0.567372,
+        0.517972,
+        0.514949,
+        0.691161,
+        0.563999,
+        0.544833,
+        0.565802,
+        0.648042,
+        0.696407,
+        0.754798,
+        0.718863
+      ],
+      "median_seconds": 0.607707,
+      "golden_reports_match": true,
+      "profile": {
+        "file": "regressed-cpu.pprof",
+        "bytes": 13234,
+        "sha256": "1159ba293d1929d1c276213bd853cad6f3e37cc72ddc54a78c3ece5bb48d4f8f"
+      }
+    },
+    {
+      "phase": "recovered",
+      "variant": "baseline",
+      "image_id": "sha256:438f6269b7078e997736456a16d3d7e2c9f1d7f178362c6fc637409aac047759",
+      "started_at": "2026-10-04T00:26:42.274857+00:00",
+      "finished_at": "2026-10-04T00:26:47.404451+00:00",
+      "completion_seconds": [
+        0.096946,
+        0.191025,
+        0.180854,
+        0.172342,
+        0.161832,
+        0.154606,
+        0.146537,
+        0.135875,
+        0.127138,
+        0.120627,
+        0.108757,
+        0.098848
+      ],
+      "median_seconds": 0.141206,
+      "golden_reports_match": true,
+      "profile": {
+        "file": "recovered-cpu.pprof",
+        "bytes": 3563,
+        "sha256": "8404c10795e2bd3100f49b6bb3b69189ff288a09f58dbaccc242d31d5f88167a"
+      }
+    }
+  ],
+  "errors": [],
+  "baseline_image_restored": true,
+  "cloud_provisioned": false,
+  "finished_at": "2026-10-04T00:26:48.130923+00:00"
+}

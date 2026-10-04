@@ -1,0 +1,31 @@
+{
+  "verification": "local-compose",
+  "source_revision": "487679ffcd7125f1f1fd7878d5d84401bc7d6819",
+  "started_at": "2026-10-04T00:25:38.869223+00:00",
+  "result": "passed",
+  "errors": [],
+  "cloud_provisioned": false,
+  "trace_id": "1247bd6c5fcbef3e8123182193700d82",
+  "span_names": [
+    "POST /v1/jobs",
+    "analyze documents",
+    "commit report",
+    "persist job and outbox",
+    "process job"
+  ],
+  "services": [
+    "report-workshop-api",
+    "report-workshop-worker"
+  ],
+  "durable_parent_matches": true,
+  "worker-cpu.pprof": {
+    "bytes": 5722,
+    "sha256": "fcdf2f1562f29a53ceae8e87f40070c97458b4b60f499b8e58a7e4ece1f1a3c2"
+  },
+  "worker-heap.pprof": {
+    "bytes": 7140,
+    "sha256": "d89c659ba1c5b2deddb16895465c3fc546697a4748b16050cdf7ec7fbd48685f"
+  },
+  "profile_load_jobs": 93,
+  "finished_at": "2026-10-04T00:25:58.040642+00:00"
+}
