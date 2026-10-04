@@ -56,6 +56,12 @@ func TestDurability(t *testing.T) {
 	if id == "" {
 		t.Fatal("no jobs submitted")
 	}
+	repeat := req
+	repeat.TraceParent = "00-33333333333333333333333333333333-4444444444444444-01"
+	repeated, err := s.Submit(ctx, "same", repeat)
+	if err != nil || repeated.TraceParent != req.TraceParent {
+		t.Fatal("idempotent repeat overwrote submission trace provenance")
+	}
 	if _, err = s.Submit(ctx, "same", domain.Request{Fixture: "batch-v1", Algorithm: "tokens-v1"}); !errors.Is(err, ErrConflict) {
 		t.Fatalf("conflict: %v", err)
 	}

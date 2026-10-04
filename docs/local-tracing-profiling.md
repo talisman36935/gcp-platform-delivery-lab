@@ -15,6 +15,8 @@ export APP_REVISION="$(git rev-parse HEAD)"
 docker compose -f compose.yaml -f compose.tracing.yaml --profile observability up --build -d
 python3 smoke.py
 python3 evidence/trace_profile.py --revision "$APP_REVISION"
+python3 -m pip install jsonschema==4.23.0
+python3 evidence/check_trace_profile.py
 go tool pprof -top output/worker-cpu.pprof
 go tool pprof -top output/worker-heap.pprof
 docker compose -f compose.yaml -f compose.tracing.yaml --profile observability logs api worker
@@ -27,6 +29,11 @@ processes and checks that the worker's parent is the persisted submission span.
 It next captures five seconds of CPU activity under a bounded batch-fixture load
 and one heap profile. CI parses the profiles with Go's tool and requires actual
 analysis frames in the CPU sample.
+
+The additional checker validates the observation schema and profile byte lengths/
+SHA-256 hashes, then reads Compose logs locally and requires the selected trace ID
+in both API and worker records. It exports only service/count correlation metadata;
+raw log records stay out of the observation bundle.
 
 Profiles and Tempo/collector data are local development artifacts. The recorder
 refuses to overwrite its observation file. Select a fresh output directory/run or

@@ -52,6 +52,7 @@ jobs:
         run: |
           python3 -m pip install jsonschema==4.23.0
           python3 -m unittest discover -s evidence -v
+          python3 evidence/check_api.py
           python3 evidence/record.py --revision "$SOURCE_REVISION" --output output/baseline.json
           python3 evidence/validate.py output/baseline.json
       - name: Correlated API/worker traces and bounded CPU/heap profiles
@@ -59,6 +60,7 @@ jobs:
           SOURCE_REVISION: ${{ github.sha }}
         run: |
           python3 evidence/trace_profile.py --revision "$SOURCE_REVISION"
+          python3 evidence/check_trace_profile.py
           go tool pprof -top -nodecount=50 output/worker-cpu.pprof | tee output/worker-cpu-top.txt
           grep -q 'domain.Analyze' output/worker-cpu-top.txt
           go tool pprof -top -nodecount=15 output/worker-heap.pprof

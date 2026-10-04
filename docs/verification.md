@@ -1,5 +1,15 @@
 # Verification record
 
+## Durable tracing and bounded profiles — 2026-10-04
+
+Source: `63372e9b3c3a83c4719d639cd42a5dec454ce313`.
+[Hosted run 37164242715](https://github.com/talisman36935/gcp-platform-delivery-lab/actions/runs/37164242715)
+passed the real collector/Tempo integration, durable trace-parent and retry tests,
+existing database/race gates, and CPU/heap capture. The CPU tool output contained
+document-analysis frames, so a downloaded binary profile alone was not the gate.
+This verifies local trace correlation and process profiling; the release-regression
+comparison and trace-to-profile bridge remain outstanding.
+
 ## Local metrics and collector-outage gate — 2026-10-03
 
 Source: `ce56202cfc03ce50382e4ea8d51c6de5b5b61032`.

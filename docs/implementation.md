@@ -27,7 +27,7 @@ attempts become terminal failure. Reports are currently JSONB in the same DB
 transaction; they are **not yet objects in GCS/S3**.
 
 Database availability remains a dependency. One worker handles one job at a time.
-No backoff/DLQ UI, queue-message context propagation, object reconciler, retention
+No backoff/DLQ UI, cloud queue context propagation, object reconciler, retention
 job or versioned migration framework exists yet. Tests expire leases explicitly;
 that proves the fencing contract, not a completed process-kill experiment.
 
@@ -61,7 +61,13 @@ Local metrics and a strict baseline recorder now exist, including a CI check tha
 collector unavailability fails evidence while the application still completes work.
 See [local observability](local-observability.md) for scope and reproduction.
 
-Next: finish OpenAPI and full artifact contracts; add correlated logs,
-traces and profiles; capture baseline/regression/recovery; implement cloud
+The application now serves an embedded OpenAPI 3.1 contract at /openapi.json.
+CI validates actual HTTP responses against its schemas. Optional local tracing
+persists W3C traceparent through the durable job path and retries, then verifies
+API/worker correlation in Tempo. Bounded CPU/heap capture and matching log IDs
+provide the next investigation slice.
+
+Next: finish full artifact contracts and backend log/continuous profile integration;
+capture baseline/regression/recovery; implement cloud
 adapters; then qualify a bounded GCP create/run/destroy cycle. The original
 M0/M1 milestones are partial; M2–M6 remain outstanding.

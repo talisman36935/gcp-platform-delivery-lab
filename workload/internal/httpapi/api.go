@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"errors"
 	"io"
@@ -17,8 +18,15 @@ type Repository = application.JobReaderWriter
 
 var keyPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{1,128}$`)
 
+//go:embed openapi.json
+var specification []byte
+
 func Handler(s Repository, ready func(context.Context) error, middleware ...func(http.Handler) http.Handler) http.Handler {
 	m := http.NewServeMux()
+	m.HandleFunc("GET /openapi.json", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write(specification)
+	})
 	m.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) { reply(w, 200, map[string]string{"status": "ok"}) })
 	m.HandleFunc("GET /readyz", func(w http.ResponseWriter, r *http.Request) {
 		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)

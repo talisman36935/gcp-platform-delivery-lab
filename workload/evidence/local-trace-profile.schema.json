@@ -1,0 +1,160 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Local trace and profile observation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "verification",
+    "source_revision",
+    "started_at",
+    "finished_at",
+    "result",
+    "errors",
+    "cloud_provisioned"
+  ],
+  "properties": {
+    "verification": {
+      "const": "local-compose"
+    },
+    "source_revision": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "finished_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "result": {
+      "enum": [
+        "passed",
+        "failed"
+      ]
+    },
+    "errors": {
+      "type": "array",
+      "maxItems": 1,
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z]{1,64}$"
+      }
+    },
+    "cloud_provisioned": {
+      "const": false
+    },
+    "trace_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{32}$"
+    },
+    "span_names": {
+      "type": "array",
+      "minItems": 5,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "POST /v1/jobs",
+          "persist job and outbox",
+          "process job",
+          "analyze documents",
+          "commit report",
+          "read job"
+        ]
+      }
+    },
+    "services": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "uniqueItems": true,
+      "items": {
+        "enum": [
+          "report-workshop-api",
+          "report-workshop-worker"
+        ]
+      }
+    },
+    "durable_parent_matches": {
+      "const": true
+    },
+    "profile_load_jobs": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 100
+    },
+    "worker-cpu.pprof": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bytes",
+        "sha256"
+      ],
+      "properties": {
+        "bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1048576
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    },
+    "worker-heap.pprof": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "bytes",
+        "sha256"
+      ],
+      "properties": {
+        "bytes": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1048576
+        },
+        "sha256": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{64}$"
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "result": {
+            "const": "passed"
+          }
+        }
+      },
+      "then": {
+        "required": [
+          "trace_id",
+          "span_names",
+          "services",
+          "durable_parent_matches",
+          "profile_load_jobs",
+          "worker-cpu.pprof",
+          "worker-heap.pprof"
+        ],
+        "properties": {
+          "errors": {
+            "maxItems": 0
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "errors": {
+            "minItems": 1
+          }
+        }
+      }
+    }
+  ]
+}
