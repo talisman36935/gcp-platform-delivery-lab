@@ -18,3 +18,19 @@ func TestGoldenReport(t *testing.T) {
 		t.Fatal("unknown fixture accepted")
 	}
 }
+
+func TestExperimentalVariantPreservesOutput(t *testing.T) {
+	baseline, err := AnalyzeRepeated("tiny-v1", 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	regressed, err := AnalyzeRepeated("tiny-v1", 64)
+	if err != nil || regressed != baseline {
+		t.Fatal("experimental build changed its output")
+	}
+	for _, passes := range []int{0, 65} {
+		if _, err := AnalyzeRepeated("tiny-v1", passes); err == nil {
+			t.Fatal("unbounded passes accepted")
+		}
+	}
+}

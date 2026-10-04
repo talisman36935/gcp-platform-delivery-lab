@@ -64,7 +64,16 @@ jobs:
           go tool pprof -top -nodecount=50 output/worker-cpu.pprof | tee output/worker-cpu-top.txt
           grep -q 'domain.Analyze' output/worker-cpu-top.txt
           go tool pprof -top -nodecount=15 output/worker-heap.pprof
+      - name: Compiled regression and exact-image recovery
+        env:
+          SOURCE_REVISION: ${{ github.sha }}
+          APP_REVISION: ${{ github.sha }}
+        run: |
+          python3 evidence/regression.py --revision "$SOURCE_REVISION"
+          python3 evidence/validate_regression.py output/regression-recovery.json
+          go tool pprof -top -nodecount=30 output/regressed-cpu.pprof
       - name: Missing collector must fail evidence without failing the workload
+        # Regression/recovery completes first so all phases retain the collector.
         env:
           SOURCE_REVISION: ${{ github.sha }}
         run: |

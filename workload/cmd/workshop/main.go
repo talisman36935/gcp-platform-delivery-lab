@@ -11,12 +11,14 @@ import (
 	"time"
 
 	"github.com/talisman36935/gcp-platform-delivery-lab/workload/internal/application"
+	"github.com/talisman36935/gcp-platform-delivery-lab/workload/internal/domain"
 	"github.com/talisman36935/gcp-platform-delivery-lab/workload/internal/httpapi"
 	"github.com/talisman36935/gcp-platform-delivery-lab/workload/internal/postgres"
 	"github.com/talisman36935/gcp-platform-delivery-lab/workload/internal/telemetry"
 )
 
 var revision = "development"
+var analysisVariant = "baseline"
 
 func main() {
 	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, nil)))
@@ -33,6 +35,9 @@ func run(ctx context.Context) error {
 		return errors.New("expected migrate, api or worker")
 	}
 	mode := os.Args[1]
+	if analysisVariant != "baseline" && analysisVariant != "regressed" {
+		return errors.New("invalid compiled analysis variant")
+	}
 	if mode != "migrate" && mode != "api" && mode != "worker" {
 		return errors.New("invalid mode")
 	}
@@ -51,6 +56,7 @@ func run(ctx context.Context) error {
 		return s.Migrate(ctx)
 	}
 	metrics := telemetry.New(mode, revision)
+	metrics.SetVariant(analysisVariant)
 	traces, err := telemetry.NewTraces(ctx, mode, revision, os.Getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"))
 	if err != nil {
 		return err
@@ -104,7 +110,12 @@ func run(ctx context.Context) error {
 
 func process(ctx context.Context, s *postgres.Store, metrics *telemetry.Metrics, traces *telemetry.Traces) error {
 	started := time.Now()
-	j, err := application.ProcessOne(ctx, s, revision, traces)
+	passes := 1
+	if analysisVariant == "regressed" {
+		passes = 64
+	}
+	analyzer := func(fixture string) (domain.Report, error) { return domain.AnalyzeRepeated(fixture, passes) }
+	j, err := application.ProcessOneWithAnalyzer(ctx, s, revision, analyzer, traces)
 	attempt := 0
 	if j != nil {
 		attempt = j.Attempt

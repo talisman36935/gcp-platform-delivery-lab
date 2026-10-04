@@ -1,0 +1,204 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Local compiled-variant regression and recovery",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "verification",
+    "source_revision",
+    "scenario",
+    "fixture_sha256",
+    "requested_per_phase",
+    "load",
+    "warmup_per_phase",
+    "criteria",
+    "started_at",
+    "finished_at",
+    "result",
+    "phases",
+    "errors",
+    "baseline_image_restored",
+    "cloud_provisioned"
+  ],
+  "properties": {
+    "verification": {
+      "const": "local-compose"
+    },
+    "source_revision": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "scenario": {
+      "const": "compiled-variant-regression"
+    },
+    "fixture_sha256": {
+      "const": "0f237c6f846e4f742fb9a0b89195b8f76dbd269470edb28e786c999eb15b91de"
+    },
+    "requested_per_phase": {
+      "type": "integer",
+      "minimum": 6,
+      "maximum": 12
+    },
+    "load": {
+      "const": "sequential-closed-loop"
+    },
+    "warmup_per_phase": {
+      "const": 2
+    },
+    "criteria": {
+      "const": {
+        "regression_min_ratio": 1.5,
+        "regression_min_delta_seconds": 0.05,
+        "recovery_max_ratio": 2,
+        "recovery_jitter_seconds": 0.1
+      }
+    },
+    "started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "finished_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "result": {
+      "enum": [
+        "passed",
+        "failed"
+      ]
+    },
+    "phases": {
+      "type": "array",
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "phase",
+          "variant",
+          "image_id",
+          "started_at",
+          "finished_at",
+          "completion_seconds",
+          "median_seconds",
+          "golden_reports_match",
+          "profile"
+        ],
+        "properties": {
+          "phase": {
+            "enum": [
+              "baseline",
+              "regressed",
+              "recovered"
+            ]
+          },
+          "variant": {
+            "enum": [
+              "baseline",
+              "regressed"
+            ]
+          },
+          "image_id": {
+            "type": "string",
+            "pattern": "^sha256:[0-9a-f]{64}$"
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "finished_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "completion_seconds": {
+            "type": "array",
+            "minItems": 6,
+            "maxItems": 12,
+            "items": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 15
+            }
+          },
+          "median_seconds": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 15
+          },
+          "golden_reports_match": {
+            "const": true
+          },
+          "profile": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "file",
+              "bytes",
+              "sha256"
+            ],
+            "properties": {
+              "file": {
+                "type": "string",
+                "pattern": "^(baseline|regressed|recovered)-cpu[.]pprof$"
+              },
+              "bytes": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 1048576
+              },
+              "sha256": {
+                "type": "string",
+                "pattern": "^[0-9a-f]{64}$"
+              }
+            }
+          }
+        }
+      }
+    },
+    "errors": {
+      "type": "array",
+      "maxItems": 2,
+      "items": {
+        "type": "string",
+        "pattern": "^[A-Za-z]{1,64}$"
+      }
+    },
+    "baseline_image_restored": {
+      "type": "boolean"
+    },
+    "cloud_provisioned": {
+      "const": false
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "result": {
+            "const": "passed"
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "phases": {
+            "minItems": 3
+          },
+          "baseline_image_restored": {
+            "const": true
+          },
+          "errors": {
+            "maxItems": 0
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "errors": {
+            "minItems": 1
+          }
+        }
+      }
+    }
+  ]
+}

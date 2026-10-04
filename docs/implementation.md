@@ -67,7 +67,11 @@ persists W3C traceparent through the durable job path and retries, then verifies
 API/worker correlation in Tempo. Bounded CPU/heap capture and matching log IDs
 provide the next investigation slice.
 
+Compiled baseline/regressed worker variants now provide a local comparison with
+unchanged output, declared thresholds, per-phase profiles and original-image
+recovery. The hosted experiment is the qualification gate for that comparison.
+
 Next: finish full artifact contracts and backend log/continuous profile integration;
-capture baseline/regression/recovery; implement cloud
+qualify profiling overhead and process-kill recovery; implement cloud
 adapters; then qualify a bounded GCP create/run/destroy cycle. The original
 M0/M1 milestones are partial; M2–M6 remain outstanding.

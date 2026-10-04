@@ -42,6 +42,12 @@ func (m *Metrics) Handler() http.Handler {
 	return promhttp.HandlerFor(m.registry, promhttp.HandlerOpts{Timeout: 3 * time.Second})
 }
 
+func (m *Metrics) SetVariant(variant string) {
+	info := prometheus.NewGaugeVec(prometheus.GaugeOpts{Name: "workshop_analysis_variant_info", Help: "Compiled analysis variant."}, []string{"variant"})
+	info.WithLabelValues(variant).Set(1)
+	m.registry.MustRegister(info)
+}
+
 type response struct {
 	http.ResponseWriter
 	status int

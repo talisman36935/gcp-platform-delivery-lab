@@ -29,6 +29,12 @@ type AttemptObserver interface {
 // ProcessOne returns nil when no eligible work exists. Cloud adapters must retain
 // the same fencing contract while qualifying their own delivery semantics.
 func ProcessOne(ctx context.Context, queue WorkQueue, revision string, observers ...AttemptObserver) (result *domain.Job, err error) {
+	return ProcessOneWithAnalyzer(ctx, queue, revision, domain.Analyze, observers...)
+}
+
+// ProcessOneWithAnalyzer supports release variants without coupling use cases
+// to experiment configuration or infrastructure SDKs.
+func ProcessOneWithAnalyzer(ctx context.Context, queue WorkQueue, revision string, analyze func(string) (domain.Report, error), observers ...AttemptObserver) (result *domain.Job, err error) {
 	if err := queue.Dispatch(ctx); err != nil {
 		return nil, err
 	}
@@ -52,7 +58,7 @@ func ProcessOne(ctx context.Context, queue WorkQueue, revision string, observers
 	if observer != nil {
 		_, analyzeEnd = observer.StartOperation(ctx, "analyze documents")
 	}
-	report, err := domain.Analyze(job.Fixture)
+	report, err := analyze(job.Fixture)
 	analyzeEnd(err)
 	if err != nil {
 		return nil, err

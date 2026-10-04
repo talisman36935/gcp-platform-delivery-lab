@@ -74,3 +74,20 @@ func Analyze(name string) (Report, error) {
 	r.UniqueTokens = len(words)
 	return r, nil
 }
+
+// AnalyzeRepeated supplies a deliberately inefficient experimental build while
+// preserving the report. Only bounded, compiled release variants call this.
+func AnalyzeRepeated(name string, passes int) (Report, error) {
+	if passes < 1 || passes > 64 {
+		return Report{}, errors.New("analysis passes outside experiment bounds")
+	}
+	var report Report
+	for range passes {
+		var err error
+		report, err = Analyze(name)
+		if err != nil {
+			return Report{}, err
+		}
+	}
+	return report, nil
+}

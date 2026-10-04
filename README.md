@@ -64,6 +64,7 @@ Do not use this command against another Compose project.
 - [Validation and GCP activation boundary](docs/runbook.md)
 - [Local metrics, evidence recorder and outage check](docs/local-observability.md)
 - [Trace correlation and CPU/heap investigation](docs/local-tracing-profiling.md)
+- [Controlled regression and original-image recovery](docs/local-regression-recovery.md)
 - [OpenAPI 3.1 contract](workload/internal/httpapi/openapi.json) (served at /openapi.json)
 - [Full strategy](docs/plan/portfolio-demo-strategy-2026-10-02.md)
 - [Application specification](docs/plan/portfolio-demos/application.md)
