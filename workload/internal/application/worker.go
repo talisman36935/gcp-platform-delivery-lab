@@ -20,9 +20,15 @@ type WorkQueue interface {
 	Complete(context.Context, domain.Job, domain.Report) error
 }
 
+// AttemptObserver is an optional instrumentation port. No SDK enters the use case.
+type AttemptObserver interface {
+	StartAttempt(context.Context, domain.Job) (context.Context, func(error))
+	StartOperation(context.Context, string) (context.Context, func(error))
+}
+
 // ProcessOne returns nil when no eligible work exists. Cloud adapters must retain
 // the same fencing contract while qualifying their own delivery semantics.
-func ProcessOne(ctx context.Context, queue WorkQueue, revision string) (*domain.Job, error) {
+func ProcessOne(ctx context.Context, queue WorkQueue, revision string, observers ...AttemptObserver) (result *domain.Job, err error) {
 	if err := queue.Dispatch(ctx); err != nil {
 		return nil, err
 	}
@@ -33,11 +39,32 @@ func ProcessOne(ctx context.Context, queue WorkQueue, revision string) (*domain.
 	if err != nil {
 		return nil, err
 	}
+	var observer AttemptObserver
+	if len(observers) > 0 {
+		observer = observers[0]
+	}
+	if observer != nil {
+		var end func(error)
+		ctx, end = observer.StartAttempt(ctx, job)
+		defer func() { end(err) }()
+	}
+	analyzeEnd := func(error) {}
+	if observer != nil {
+		_, analyzeEnd = observer.StartOperation(ctx, "analyze documents")
+	}
 	report, err := domain.Analyze(job.Fixture)
+	analyzeEnd(err)
 	if err != nil {
 		return nil, err
 	}
-	if err = queue.Complete(ctx, job, report); err != nil {
+	completeCtx := ctx
+	completeEnd := func(error) {}
+	if observer != nil {
+		completeCtx, completeEnd = observer.StartOperation(ctx, "commit report")
+	}
+	err = queue.Complete(completeCtx, job, report)
+	completeEnd(err)
+	if err != nil {
 		return nil, err
 	}
 	return &job, nil

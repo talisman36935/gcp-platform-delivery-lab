@@ -13,8 +13,9 @@ import (
 var ErrFixture = errors.New("unknown fixture")
 
 type Request struct {
-	Fixture   string `json:"fixture"`
-	Algorithm string `json:"algorithm"`
+	TraceParent string `json:"-"`
+	Fixture     string `json:"fixture"`
+	Algorithm   string `json:"algorithm"`
 }
 
 type Report struct {

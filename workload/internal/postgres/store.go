@@ -53,11 +53,11 @@ func (s *Store) Migrate(ctx context.Context) error {
 	return tx.Commit(ctx)
 }
 
-const fields = "id,fixture,algorithm,state,attempt,created_at,completed_at,report"
+const fields = "id,fixture,algorithm,state,attempt,created_at,completed_at,report,trace_parent"
 
 func scan(row pgx.Row) (Job, error) {
 	var j Job
-	err := row.Scan(&j.ID, &j.Fixture, &j.Algorithm, &j.State, &j.Attempt, &j.CreatedAt, &j.CompletedAt, &j.Report)
+	err := row.Scan(&j.ID, &j.Fixture, &j.Algorithm, &j.State, &j.Attempt, &j.CreatedAt, &j.CompletedAt, &j.Report, &j.TraceParent)
 	return j, err
 }
 
@@ -88,7 +88,7 @@ func (s *Store) Submit(ctx context.Context, key string, req domain.Request) (Job
 		return Job{}, err
 	}
 	defer tx.Rollback(ctx)
-	_, err = tx.Exec(ctx, `INSERT INTO jobs(id,idempotency_key,request_hash,fixture,algorithm) VALUES($1,$2,$3,$4,$5) ON CONFLICT(idempotency_key) DO NOTHING`, id, key, hash, req.Fixture, req.Algorithm)
+	_, err = tx.Exec(ctx, `INSERT INTO jobs(id,idempotency_key,request_hash,fixture,algorithm,trace_parent) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT(idempotency_key) DO NOTHING`, id, key, hash, req.Fixture, req.Algorithm, req.TraceParent)
 	if err != nil {
 		return Job{}, err
 	}

@@ -29,7 +29,7 @@ func TestDurability(t *testing.T) {
 	if _, err = s.Pool.Exec(ctx, "TRUNCATE jobs CASCADE"); err != nil {
 		t.Fatal(err)
 	}
-	req := domain.Request{Fixture: "tiny-v1", Algorithm: "tokens-v1"}
+	req := domain.Request{Fixture: "tiny-v1", Algorithm: "tokens-v1", TraceParent: "00-11111111111111111111111111111111-2222222222222222-01"}
 	var wg sync.WaitGroup
 	ids := make(chan string, 12)
 	for range 12 {
@@ -67,6 +67,9 @@ func TestDurability(t *testing.T) {
 	first, err := s.Claim(ctx, "baseline", time.Minute)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if first.TraceParent != req.TraceParent {
+		t.Fatal("trace parent lost during durable dispatch")
 	}
 	if _, err = s.Claim(ctx, "duplicate", time.Minute); !errors.Is(err, domain.ErrNotFound) {
 		t.Fatalf("active lease claimed: %v", err)

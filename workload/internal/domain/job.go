@@ -13,6 +13,7 @@ var (
 )
 
 type Job struct {
+	TraceParent string          `json:"-"`
 	ID          string          `json:"id"`
 	Fixture     string          `json:"fixture"`
 	Algorithm   string          `json:"algorithm"`

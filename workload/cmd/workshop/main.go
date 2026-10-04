@@ -51,7 +51,12 @@ func run(ctx context.Context) error {
 		return s.Migrate(ctx)
 	}
 	metrics := telemetry.New(mode, revision)
-	stopMetrics, err := metrics.Start(ctx, os.Getenv("METRICS_ADDR"))
+	traces, err := telemetry.NewTraces(ctx, mode, revision, os.Getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"))
+	if err != nil {
+		return err
+	}
+	defer traces.Shutdown()
+	stopMetrics, err := metrics.Start(ctx, os.Getenv("METRICS_ADDR"), os.Getenv("PROFILE_ENABLED") == "true")
 	if err != nil {
 		return err
 	}
@@ -65,7 +70,7 @@ func run(ctx context.Context) error {
 				return nil
 			case <-ticker.C:
 				iteration, cancel := context.WithTimeout(ctx, 10*time.Second)
-				err := process(iteration, s, metrics)
+				err := process(iteration, s, metrics, traces)
 				cancel()
 				if err != nil {
 					slog.Warn("processing iteration failed", "category", "processing")
@@ -77,7 +82,7 @@ func run(ctx context.Context) error {
 	if addr == "" {
 		addr = "127.0.0.1:8080"
 	}
-	srv := &http.Server{Addr: addr, Handler: httpapi.Handler(s, s.Pool.Ping, metrics.InstrumentHTTP), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 10 * time.Second, IdleTimeout: 30 * time.Second}
+	srv := &http.Server{Addr: addr, Handler: httpapi.Handler(traces.Repository(s), s.Pool.Ping, metrics.InstrumentHTTP, traces.InstrumentHTTP), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 10 * time.Second, IdleTimeout: 30 * time.Second}
 	finished := make(chan struct{})
 	defer close(finished)
 	go func() {
@@ -97,9 +102,9 @@ func run(ctx context.Context) error {
 	return err
 }
 
-func process(ctx context.Context, s *postgres.Store, metrics *telemetry.Metrics) error {
+func process(ctx context.Context, s *postgres.Store, metrics *telemetry.Metrics, traces *telemetry.Traces) error {
 	started := time.Now()
-	j, err := application.ProcessOne(ctx, s, revision)
+	j, err := application.ProcessOne(ctx, s, revision, traces)
 	attempt := 0
 	if j != nil {
 		attempt = j.Attempt
@@ -109,7 +114,7 @@ func process(ctx context.Context, s *postgres.Store, metrics *telemetry.Metrics)
 		return err
 	}
 	if j != nil {
-		slog.Info("job completed", "job_id", j.ID, "attempt", j.Attempt, "revision", revision, "processing_ms", time.Since(started).Milliseconds())
+		slog.Info("job completed", "service", "worker", "job_id", j.ID, "attempt", j.Attempt, "revision", revision, "trace_id", telemetry.JobTraceID(j.TraceParent), "processing_ms", time.Since(started).Milliseconds())
 	}
 	return nil
 }

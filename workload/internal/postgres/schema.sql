@@ -16,6 +16,8 @@ CREATE TABLE IF NOT EXISTS outbox (
  job_id text PRIMARY KEY REFERENCES jobs(id),
  published_at timestamptz
 );
+-- Additive local migration preserves job history from the initial quickstart.
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS trace_parent text NOT NULL DEFAULT '';
 CREATE TABLE IF NOT EXISTS local_queue (
  job_id text PRIMARY KEY REFERENCES jobs(id),
  available_at timestamptz NOT NULL DEFAULT now()

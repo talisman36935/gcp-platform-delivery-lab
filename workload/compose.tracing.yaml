@@ -1,0 +1,34 @@
+# Optional extension to the base Compose profile; telemetry data is disposable.
+services:
+  api:
+    environment:
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://collector:4318/v1/traces
+  worker:
+    environment:
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://collector:4318/v1/traces
+      PROFILE_ENABLED: "true"
+  collector:
+    image: otel/opentelemetry-collector-contrib:0.161.0@sha256:fd328de2552466ad78385e1b1289c3f2402b1c45f265b252aab1955b42845ac1
+    profiles: [observability]
+    user: "10001:10001"
+    command: ["--config=/etc/otelcol-contrib/config.yaml"]
+    volumes: ["./telemetry/collector.yaml:/etc/otelcol-contrib/config.yaml:ro"]
+    tmpfs: ["/data:uid=10001,gid=10001,size=32m"]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 256m
+    cpus: 0.5
+  tempo:
+    image: grafana/tempo:2.10.8@sha256:f0561deb1c68ec44d6e6e7e4487f30106c4e5e768642077695b37958b105812a
+    profiles: [observability]
+    user: "10001:10001"
+    command: ["-config.file=/etc/tempo.yaml"]
+    volumes: ["./telemetry/tempo.yaml:/etc/tempo.yaml:ro"]
+    tmpfs: ["/var/tempo:uid=10001,gid=10001,size=128m"]
+    ports: ["127.0.0.1:19093:3200"]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 512m
+    cpus: 0.5

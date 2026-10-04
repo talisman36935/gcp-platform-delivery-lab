@@ -43,7 +43,7 @@ jobs:
       - name: Build and start local application
         env:
           APP_REVISION: ${{ github.sha }}
-        run: docker compose --profile observability up --build -d
+        run: docker compose -f compose.yaml -f compose.tracing.yaml --profile observability up --build -d
       - name: End-to-end HTTP and worker assertions
         run: python3 smoke.py
       - name: Evidence contract and measured local baseline
@@ -54,11 +54,19 @@ jobs:
           python3 -m unittest discover -s evidence -v
           python3 evidence/record.py --revision "$SOURCE_REVISION" --output output/baseline.json
           python3 evidence/validate.py output/baseline.json
+      - name: Correlated API/worker traces and bounded CPU/heap profiles
+        env:
+          SOURCE_REVISION: ${{ github.sha }}
+        run: |
+          python3 evidence/trace_profile.py --revision "$SOURCE_REVISION"
+          go tool pprof -top -nodecount=50 output/worker-cpu.pprof | tee output/worker-cpu-top.txt
+          grep -q 'domain.Analyze' output/worker-cpu-top.txt
+          go tool pprof -top -nodecount=15 output/worker-heap.pprof
       - name: Missing collector must fail evidence without failing the workload
         env:
           SOURCE_REVISION: ${{ github.sha }}
         run: |
-          docker compose --profile observability stop prometheus
+          docker compose -f compose.yaml -f compose.tracing.yaml --profile observability stop prometheus
           if python3 evidence/record.py --revision "$SOURCE_REVISION" --count 1 --output output/collector-outage.json; then
             echo "Evidence incorrectly passed with the collector stopped"
             exit 1
@@ -70,13 +78,16 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: local-observations
-          path: workload/output/*.json
+          path: |
+            workload/output/*.json
+            workload/output/*.pprof
+            workload/output/*-top.txt
           retention-days: 30
       - name: Diagnostics and cleanup
         if: always()
         run: |
-          docker compose --profile observability logs --no-color --tail=100
-          docker compose --profile observability down --volumes
+          docker compose -f compose.yaml -f compose.tracing.yaml --profile observability logs --no-color --tail=100
+          docker compose -f compose.yaml -f compose.tracing.yaml --profile observability down --volumes
   terraform:
     runs-on: ubuntu-24.04
     timeout-minutes: 10

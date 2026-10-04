@@ -55,7 +55,7 @@ Do not use this command against another Compose project.
 | Tests | Golden output, HTTP contracts, concurrent idempotency, leases/retries, Compose smoke | Cloud queue contracts, process-kill experiment |
 | GCP | Pinned Terraform provider, VPC/NAT/private nodes, fleet/Config Sync bootstrap | Actual plan/apply, remote state/federation, cloud teardown |
 | GitOps | Root platform ownership, restricted namespace delegation, disjoint identity check | Live reconciliation, delegated negative test, promotion/rollback |
-| Observability | Structured logs, bounded API/worker/runtime metrics, optional local Prometheus | Traces, profiles, log collection and investigation dashboards |
+| Observability | Structured logs, metrics/Prometheus, optional OTel collector/Tempo and CPU/heap capture | Continuous profiles, log backend and investigation dashboards |
 | Portfolio | Strict local baseline records, missing-collector gate, detailed Labs specification | Qualified durable cloud bundles and website ingestion |
 
 ## Navigate
@@ -63,6 +63,7 @@ Do not use this command against another Compose project.
 - [Current architecture and decisions](docs/implementation.md)
 - [Validation and GCP activation boundary](docs/runbook.md)
 - [Local metrics, evidence recorder and outage check](docs/local-observability.md)
+- [Trace correlation and CPU/heap investigation](docs/local-tracing-profiling.md)
 - [Full strategy](docs/plan/portfolio-demo-strategy-2026-10-02.md)
 - [Application specification](docs/plan/portfolio-demos/application.md)
 - [Platform contracts](docs/plan/portfolio-demos/platforms.md)
