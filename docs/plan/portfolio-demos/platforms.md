@@ -4,10 +4,10 @@ Status: implementation plan, 2026-10-02. Parent: [strategy](../portfolio-demo-st
 
 ## Shared delivery contract
 
-The [minimal infrastructure and cost policy](minimal-infrastructure.md) takes
-precedence for the first demos: London, one cluster/node per cloud, one cloud at
-a time, in-cluster disposable services and immediate audited teardown. Broader
-profiles below are optional; budget/lifetime proposals remain unapproved.
+The [ephemeral HA architecture and cost policy](minimal-infrastructure.md) takes
+precedence: full London multi-zone HA demos on low-cost viable nodes, one cloud
+at a time, full GitOps/cloud services/observability and immediate audited teardown.
+The earlier one-node simplification is superseded; budgets remain unapproved.
 
 Cloud repos own infrastructure, environment configuration and experiment execution.
 The application repo owns application releases and provider-neutral contracts.

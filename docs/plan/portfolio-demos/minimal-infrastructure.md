@@ -1,78 +1,104 @@
-# Minimal infrastructure and cost policy — 2026-10-05
+# Ephemeral HA architecture and cost policy — 2026-10-05
 
-This policy supersedes broader default topology suggestions in the original plan.
-It records the user's London, ephemeral and minimum-infrastructure requirements.
-It is a design/activation gate, not evidence that billing controls are configured.
+This supersedes the earlier one-node/minimal-feature proposal. The user wants the
+complex architecture, HA and full observability on the cheapest viable machines,
+for extremely brief runs. Minimize cost/lifetime, not architectural capabilities.
+The existing filename is retained so old links continue to resolve.
 
-## First demo topology
+## Target topology and evidence
 
-- Run one cloud at a time, one experiment at a time; no always-on demo environment.
-- GCP: `europe-west2` (London), one single-zone GKE Standard cluster and one
-  appropriately sized small node, Config Sync RootSync/RepoSync and Report Workshop.
-- AWS: `eu-west-2` (London), temporary local/runner kind management with
-  Flux/CAPI/CAPA, one EKS workload cluster and one small worker node.
-- Run disposable PostgreSQL and bounded observability in the workload cluster.
-  No managed database, separate monitoring cluster, HA replicas or multi-region setup.
-  Capacity must fit the app plus controllers/telemetry; do not pick an undersized node
-  merely to claim a lower price. Export observations before deleting local storage.
-- Prefer ClusterIP services and authenticated port-forwarding. No public demo ingress,
-  load balancer, custom domain or dedicated NAT gateway by default.
-- Qualify supported networking and Git/image/API egress first. Avoiding NAT is a
-  design goal, not permission to weaken isolation or assume a public subnet works.
-  Any necessary NAT/load balancer or extra node needs explicit cost/topology review.
-- Queue/object resources and ACK controllers are experiment-specific: create only
-  those needed to demonstrate Pub/Sub/GCS or SQS/S3 access/reconciliation, then delete.
-- Cloud Deploy, Policy Controller, CAPI pivot and additional environments stay optional
-  later profiles. Promotion may use namespaces in the same cluster, not extra clusters.
+- London: GCP europe-west2 / AWS eu-west-2. One cloud experiment at a time.
+- GCP: regional GKE Standard control plane, three workers across three zones,
+  Terraform and fleet-managed Config Sync RootSync/delegated RepoSync.
+  Explicitly select one node per zone, not the regional nine-node default.
+- AWS: EKS multi-AZ control plane, three workers across three AZs, temporary kind
+  management with Flux/CAPI/CAPA and ACK S3/SQS. Management remains until cleanup.
+- Preserve clean application ports, replicated API/workers, durable PostgreSQL,
+  Pub/Sub/GCS or SQS/S3, scoped identities and complete GitOps delivery/recovery.
+- Include topology spread/anti-affinity, disruption budgets, probes, controlled
+  failover and metrics/logs/traces/profiles/dashboards.
+- Database HA requires a qualified replication/failover and storage design with
+  measured recovery/data-loss criteria. Multiple nodes/API replicas do not prove
+  end-to-end HA; the current single PostgreSQL deployment is not HA.
+- Keep networking/NAT, ingress/load balancing and policy components needed to
+  substantiate the architecture; cost them rather than remove them by default.
+  Avoid gratuitous duplicate clusters. Cloud Deploy and CAPI pivot remain later
+  separately owned experiments, not prerequisites for every HA run.
+- The portfolio shows both complete design and exact tested deployment, clearly
+  separating intended capabilities from observed failover/recovery/cost/cleanup.
 
-## Budget and activation gates
+## London instance comparison
 
-Budget alerts are explicitly requested. Proposed, **not yet approved**, values are
-£2 per cloud per run, alerts at £0.50/£1/£2 and a one-hour maximum lifetime.
-Earlier £10 examples are not spending approval. Confirm amount, currency conversion
-where billing uses another currency, alert recipient and lifetime before activation.
-A one-hour deadline must include provisioning and cleanup reserve, not just workload time.
+Snapshot checked 2026-10-05. Linux on-demand USD before tax/credits, excluding
+CPU-credit surcharges; no reserved/committed-use purchases for temporary labs.
 
-Estimate the complete London run before creation: control plane, nodes, disks,
-IP/networking, telemetry, storage/requests, registry and any bootstrap retention.
-Do not assume trial credits make usage free. Verify actual account/trial eligibility;
-monitor gross usage before promotional credits as well as net charges.
-Refuse an estimated over-budget run and simplify or seek an explicit revised allowance.
+| Candidate | vCPU / RAM | Node/hour | Three nodes/hour |
+| --- | --- | ---: | ---: |
+| AWS t4g.small (ARM) | 2 / 2 GiB | $0.0188 | $0.0564 |
+| AWS t4g.medium (ARM) | 2 / 4 GiB | $0.0376 | $0.1128 |
+| AWS t3a.medium (x86) | 2 / 4 GiB | $0.0425 | $0.1275 |
+| AWS t4g.large (ARM) | 2 / 8 GiB | $0.0752 | $0.2256 |
+| AWS t3a.large (x86) | 2 / 8 GiB | $0.0850 | $0.2550 |
+| GCP e2-medium (shared CPU) | 2 / 4 GiB | $0.04316778 | $0.12950334 |
+| GCP e2-standard-2 | 2 / 8 GiB | $0.08633556 | $0.25900668 |
 
-Alerts are delayed billing signals, not a universal guaranteed hard cap. The user's
-hard-cap requirement remains an unresolved activation gate until provider/trial
-spending protection and coverage for every selected billable service are verified.
-Resource/count limits, deadlines, independent cleanup and alerts reduce exposure;
-they must not be presented as a guaranteed monetary ceiling.
+Preferred qualification candidates: three AWS t4g.large after checking all
+images/AMIs support ARM, otherwise t3a.large; three GCP e2-standard-2.
+These are affordable candidates, not guaranteed capacity or a proven global
+cheapest choice. Measure reservations/pod requests and surviving two-node capacity;
+test 4 GiB alternatives only if those gates pass. Do not assume 2 GiB is sufficient.
 
-References:
-- [AWS Budgets notification delay](https://docs.aws.amazon.com/cost-management/latest/userguide/budgets-managing-costs.html)
-- [GCP alerts-only budgets](https://docs.cloud.google.com/billing/docs/how-to/budgets)
-- [GCP spend-cap coverage to qualify](https://docs.cloud.google.com/billing/docs/how-to/budgets-spend-caps)
+Including the $0.10/hour standard managed control-plane fee gives preferred
+node/control-plane subtotals of $0.3256/hour AWS and $0.35900668/hour GCP,
+approximately $0.16/$0.18 for 30 minutes at steady topology.
+These are NOT complete run estimates: add disks, HA database, NAT/IPs/LBs, transfer,
+telemetry, Config Sync feature fees where applicable, queues/storage, registry,
+retained bootstrap and provisioning/deletion/surge-node time.
 
-## Immediate teardown and retention
+Start on-demand for repeatable qualification. Compare live Spot offers for a
+separate interruption profile, not a fixed assumed discount. Burstable AWS CPU
+credit charges/throttling need explicit load-test treatment. Recheck pricing and
+regional/version availability before apply.
 
-Finish evidence capture, then immediately remove all run-scoped billable resources.
-Failure, cancellation and deadline expiry also enter cleanup; teardown must remain
-possible if the runner or temporary management cluster fails. Keep management access
-until workload/cloud deletion is independently verified.
+Sources:
+- [Official AWS London EC2 price list](https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/current/eu-west-2/index.csv)
+- [GCP VM prices: London selection](https://cloud.google.com/products/compute/pricing/general-purpose)
+- [EKS pricing](https://aws.amazon.com/eks/pricing/)
+- [GKE pricing and feature fees](https://cloud.google.com/kubernetes-engine/pricing)
+- [GKE regional node defaults](https://docs.cloud.google.com/kubernetes-engine/docs/concepts/regional-clusters)
+- [AWS T4g CPU-credit pricing](https://aws.amazon.com/ec2/instance-types/t4/)
+- [AWS NAT billing: partial hours round up](https://aws.amazon.com/vpc/pricing/)
+- [GCP NAT pricing](https://cloud.google.com/nat/pricing)
 
-Audit cluster/node compute, disks/snapshots, load balancers, NAT, interfaces/IPs,
-buckets/object versions, queues and run-scoped logs/images as applicable.
-A failed or under-permissioned audit is incomplete, never a clean result.
-Record late billing separately; deletion completion does not prove final cost.
+## Cost safeguards and immediate teardown
 
-Do not silently retain billable resources. Private Terraform state/federation bootstrap
-is currently designed to persist for recoverability, but that retention exception
-has **not** been approved. Declare its cost and deletion policy before apply; retain
-state/identity through cleanup, then follow the agreed retention decision.
-Only sanitized historical evidence belongs in the portfolio; no live public cloud
-control or credentials.
+Budget alerts are required. Track gross usage before trial credits alongside net
+charges; verify actual trial/service eligibility. Alerts are delayed billing
+signals, not guaranteed caps. The requested hard-cap protection remains an
+activation gate until coverage is verified for every selected billable service.
+Resource limits, deadlines and cleanup must not be called a monetary hard cap.
+
+Earlier £2/cloud/run, £0.50/£1/£2 alerts and one-hour lifetime remain unapproved
+proposals, not validated HA allowances. Agree complete cost estimate, currency,
+recipient and maximum lifetime before activation. Brief workload time does not
+mean instant provisioning/deletion; reserve cleanup time within the deadline.
+Refuse an over-budget plan rather than silently increase the allowance.
+
+Capture evidence, then immediately delete on success, failure, cancellation or
+expiry. Keep external scoped inventory and independent cleanup capability.
+Audit compute/clusters, disks/snapshots, NAT/LBs, interfaces/IPs, buckets/object
+versions, queues and run-scoped logs/images. Insufficient audit permissions mean
+incomplete cleanup evidence. Record eventual deletion and delayed billing separately.
+
+Private state/federation bootstrap currently survives normal lab teardown by design,
+but no retention exception is approved. Keep it recoverable through cleanup, then
+follow the agreed deletion/retention policy. No silently retained billable resources.
+Portfolio evidence is sanitized historical data, not live control/credentials.
 
 ## Implementation gap
 
-Documentation changes do not modify deployed infrastructure or activate alerts.
-The current GCP Terraform still declares private-node NAT; the AWS rendering spike
-does not qualify NAT-free networking. Both need implementation/qualification against
-this policy before cloud execution. No approved monetary limit, verified hard cap,
-configured alerts or cloud deployment is claimed by this document.
+This is the target, not an implementation claim. GCP Terraform still models the
+earlier single-zone/one-node foundation; AWS rendering still models one worker and
+an x86 AMI. HA placement, ARM selection, replicated services/database, networking,
+failover evidence and spending controls require implementation and qualification.
+No cloud resource or billing setting is changed by this documentation update.

@@ -1,10 +1,11 @@
 # Validation and activation runbook
 
-## Minimal cloud execution policy
+## Ephemeral HA cloud execution policy
 
-Follow the [minimal infrastructure and cost policy](plan/portfolio-demos/minimal-infrastructure.md)
-before activation. London is selected; budget alerts and immediate cleanup are
-required. £2/run and one hour remain proposals, not approved limits. Verified
+Follow the [ephemeral HA architecture and cost policy](plan/portfolio-demos/minimal-infrastructure.md)
+before activation. London multi-zone HA, low-cost viable nodes, full architecture,
+budget alerts and immediate audited cleanup are required. £2/run and one hour
+remain proposals, not approved or validated HA limits. Verified
 spending protection and bootstrap retention decisions remain activation gates.
 Existing topology/intent validators do not yet enforce this complete policy.
 
