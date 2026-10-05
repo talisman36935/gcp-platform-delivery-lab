@@ -29,7 +29,10 @@ transaction; they are **not yet objects in GCS/S3**.
 Database availability remains a dependency. One worker handles one job at a time.
 No backoff/DLQ UI, cloud queue context propagation, object reconciler, retention
 job or versioned migration framework exists yet. Tests expire leases explicitly;
-that proves the fencing contract, not a completed process-kill experiment.
+that proves the fencing contract. Hosted replica recovery additionally kills a
+real worker before completion and verifies takeover after natural lease expiry;
+see [application replicas](application-replicas.md). Database failover remains
+unqualified.
 
 ## ADR 003: GCP foundation with explicit activation gate
 

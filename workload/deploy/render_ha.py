@@ -33,7 +33,7 @@ def render(*, image: str, revision: str, namespace: str = "report-dev") -> dict:
         container = {
             "name": role, "image": image, "args": [role],
             "env": [{"name": "DATABASE_URL", "valueFrom": {"secretKeyRef": {
-                "name": "report-database", "key": "uri"}}},
+                "name": "report-db-app", "key": "uri"}}},
                 {"name": "METRICS_ADDR", "value": "0.0.0.0:9090"}],
             "ports": [{"name": "metrics", "containerPort": 9090}],
             "resources": {"requests": {"cpu": "100m" if role == "api" else "250m",
@@ -93,7 +93,7 @@ def render(*, image: str, revision: str, namespace: str = "report-dev") -> dict:
                                 "seccompProfile": {"type": "RuntimeDefault"}},
             "containers": [{"name": "migrate", "image": image, "args": ["migrate"],
                 "env": [{"name": "DATABASE_URL", "valueFrom": {"secretKeyRef": {
-                    "name": "report-database", "key": "uri"}}}],
+                    "name": "report-db-app", "key": "uri"}}}],
                 "resources": {"requests": {"cpu": "100m", "memory": "128Mi"},
                               "limits": {"cpu": "500m", "memory": "256Mi"}},
                 "securityContext": {"allowPrivilegeEscalation": False,

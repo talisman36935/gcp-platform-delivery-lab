@@ -52,7 +52,7 @@ Do not use this command against another Compose project.
 | Area | Current implementation | Not yet demonstrated |
 | --- | --- | --- |
 | Workload | API, PostgreSQL outbox/local queue, worker, fenced attempts, report | Pub/Sub/GCS adapters, object publication recovery |
-| Tests | Golden output, HTTP contracts, concurrent idempotency, leases/retries, Compose smoke | Cloud queue contracts, process-kill experiment |
+| Tests | Golden output, HTTP contracts, concurrent idempotency, leases/retries, Compose smoke and real replica/worker-crash recovery | Cloud queue contracts, database/zone failure |
 | GCP | Terraform lab foundation plus private-state/federated-CI bootstrap | Actual plan/apply, identity qualification and cloud teardown |
 | GitOps | Root platform ownership, restricted namespace delegation, disjoint identity check | Live reconciliation, delegated negative test, promotion/rollback |
 | Observability | Structured logs, metrics/Prometheus, optional OTel collector/Tempo and CPU/heap capture | Continuous profiles, log backend and investigation dashboards |

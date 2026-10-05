@@ -50,10 +50,11 @@ jobs:
         env:
           SOURCE_REVISION: ${{ github.sha }}
         run: |
-          python3 -m pip install jsonschema==4.23.0
+          python3 -m pip install jsonschema==4.23.0 PyYAML==6.0.2
           python3 -m unittest discover -s evidence -v
           python3 -m unittest discover -s deploy -v
           python3 deploy/check_schemas.py
+          python3 deploy/check_database_schema.py
           python3 evidence/check_api.py
           python3 evidence/record.py --revision "$SOURCE_REVISION" --output output/baseline.json
           python3 evidence/validate.py output/baseline.json

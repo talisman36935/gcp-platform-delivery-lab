@@ -51,8 +51,10 @@ Runtime limits, read-only/non-root security and explicit probes are included.
 Worker readiness checks its listener, not cloud queue/database processing health.
 PDBs constrain voluntary evictions, not arbitrary machine or zone loss.
 
-The platform owner must create the namespace and an externally managed
-report-database Secret with a URI key. No credentials are emitted by the renderer.
+The platform owner must create the namespace and qualify the database operator.
+The companion database profile lets CloudNativePG generate the report-db-app
+Secret with a URI key for its non-superuser application owner. The app references
+that secret; neither renderer emits credentials or duplicates secret ownership.
 Database credentials, HA database/storage, network-policy egress, workload cloud
 identity and telemetry endpoints must be qualified before activation. Await the
 migration Job before workload assertions; incompatible migrations block delivery.
@@ -63,3 +65,32 @@ Hard anti-affinity intentionally leaves a replacement pending after a worker los
 two replicas should continue serving, rather than falsely claim three fault domains
 on two nodes. Verify surviving-node capacity, placement and behavior in a live run.
 No instance count or static manifest establishes end-to-end HA.
+
+## Database durability profile
+
+The dormant database renderer targets CloudNativePG v1.30.1: three PostgreSQL 18
+instances, required cross-zone anti-affinity, 10 GiB per instance and bounded
+CPU/memory. It requests quorum synchronous replication to one standby with required
+durability and failover quorum enabled. Loss of sufficient standbys should block
+writes rather than silently relax durability. This is a requested policy, not a
+measured zero-data-loss guarantee.
+
+```sh
+python3 workload/deploy/render_database.py \
+  --image ghcr.io/cloudnative-pg/postgresql:18.MINOR@sha256:MANIFEST_DIGEST \
+  --storage-class QUALIFIED_STORAGE_CLASS --namespace report-dev
+```
+
+An actual compatible image digest and CSI storage class must be qualified separately
+for each cloud/architecture. CI uses a synthetic digest for schema checks, not a
+published image assertion. The operator/CRD artifact is checksum-pinned for the
+served-schema check; signature trust, CEL/webhook admission and runtime behavior
+remain separate gates. No operator is installed by these renderers.
+
+Activation order: platform CRDs/operator and storage policy, database readiness and
+secret generation, migration completion, app rollout, then workload assertions.
+Qualify operator replication/control-plane egress and app database/DNS/telemetry
+policies without broadening the existing default-deny by accident. Record primary
+identity, replication state, acknowledged job IDs, failover latency and any lost
+accepted jobs during primary/zone failure. Audit all three volumes and any snapshots
+during teardown; retain neither credentials nor raw database contents as evidence.

@@ -1,0 +1,26 @@
+{
+  "verification": "local-compose",
+  "source_revision": "de55de7c084313114bb2cb594b343f1bcd4a5f3d",
+  "scenario": "replica-worker-crash",
+  "started_at": "2026-10-05T23:01:05.337610+00:00",
+  "result": "passed",
+  "api_replica_idempotency": true,
+  "surviving_api_accepts": true,
+  "worker_sigkill": true,
+  "worker_exit_code": 137,
+  "source_images_match": true,
+  "recovered_attempt": 2,
+  "golden_report_match": true,
+  "attempt_history": [
+    "1:false",
+    "2:true"
+  ],
+  "test_gate_removed": true,
+  "baseline_restored": true,
+  "database_ha_verified": false,
+  "cloud_provisioned": false,
+  "errors": [],
+  "killed_at": "2026-10-05T23:01:08.449092+00:00",
+  "recovered_at": "2026-10-05T23:01:38.121911+00:00",
+  "finished_at": "2026-10-05T23:01:40.298287+00:00"
+}
