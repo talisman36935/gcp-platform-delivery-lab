@@ -204,7 +204,15 @@ def main():
                         for env in container.get("env", []):
                             if env["name"] == "OPERATOR_IMAGE_NAME":
                                 env["value"] = OPERATOR_IMAGE
-            apply({"apiVersion": "v1", "kind": "List", "items": documents})
+            # Large served CRDs exceed the client-side last-applied annotation
+            # limit. This manifest is public and contains no runtime secrets.
+            try:
+                kube("apply", "--server-side", "--field-manager=portfolio-ha-operator",
+                     "-f", "-", data=json.dumps({
+                         "apiVersion": "v1", "kind": "List", "items": documents}))
+            except subprocess.CalledProcessError as exc:
+                print(exc.stderr, flush=True)
+                raise
             kube("wait", "--for=condition=Established", "crd/clusters.postgresql.cnpg.io",
                  "--timeout=120s", timeout=150)
             kube("-n", "cnpg-system", "rollout", "status", "deployment/cnpg-controller-manager",
