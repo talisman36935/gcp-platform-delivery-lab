@@ -165,6 +165,7 @@ def main():
     forward = None
     stopped_node = None
     created = False
+    stage = "create-cluster"
     original_config = os.environ.get("KUBECONFIG")
     with tempfile.TemporaryDirectory(prefix="portfolio-ha-") as scratch:
         os.environ["KUBECONFIG"] = str(Path(scratch) / "kubeconfig")
@@ -172,12 +173,14 @@ def main():
             created = True
             run("kind", "create", "cluster", "--name", NAME, "--config",
                 str(Path(__file__).with_name("kind-ha.yaml")), "--image", NODE_IMAGE,
-                "--wait", "180s", timeout=300)
+                "--wait", "180s", "--retain", timeout=300)
+            stage = "create-namespace"
             apply({"apiVersion": "v1", "kind": "Namespace", "metadata": {
                 "name": NAMESPACE, "labels": {"pod-security.kubernetes.io/enforce": "restricted"}}})
             credential = base64.b64encode((os.environ["REGISTRY_USER"] + ":" +
                                           os.environ["GH_TOKEN"]).encode()).decode()
             config = json.dumps({"auths": {"ghcr.io": {"auth": credential}}})
+            stage = "registry-secret"
             apply({"apiVersion": "v1", "kind": "Secret", "metadata": {
                 "name": "ci-image-pull", "namespace": NAMESPACE},
                 "type": "kubernetes.io/dockerconfigjson",
@@ -187,6 +190,7 @@ def main():
             if hashlib.sha256(operator).hexdigest() != OPERATOR_HASH:
                 raise ValueError("operator release checksum differs")
             documents = [d for d in yaml.safe_load_all(operator) if d]
+            stage = "operator-install"
             for obj in documents:
                 if obj["kind"] == "Deployment":
                     obj["spec"]["replicas"] = 2
@@ -206,17 +210,20 @@ def main():
             kube("-n", "cnpg-system", "rollout", "status", "deployment/cnpg-controller-manager",
                  "--timeout=180s", timeout=200)
             apply(database(image=DB_IMAGE, storage_class="standard", namespace=NAMESPACE))
+            stage = "database-ready"
             wait(ready_instances, 480)
             for obj in profile["items"]:
                 if obj["kind"] == "ServiceAccount":
                     obj["imagePullSecrets"] = [{"name": "ci-image-pull"}]
             migrations = [i for i in profile["items"] if i["kind"] == "Job"]
+            stage = "application-migrate"
             bootstrap = [i for i in profile["items"] if i["kind"] == "ServiceAccount"]
             apply({"apiVersion": "v1", "kind": "List", "items": bootstrap + migrations})
             kube("-n", NAMESPACE, "wait", "--for=condition=Complete",
                  "job/" + migrations[0]["metadata"]["name"], "--timeout=120s", timeout=150)
             apply({"apiVersion": "v1", "kind": "List", "items": [
                 i for i in profile["items"] if i["kind"] not in {"Job", "ServiceAccount"}]})
+            stage = "application-ready"
             for role in ("api", "worker"):
                 kube("-n", NAMESPACE, "rollout", "status", "deployment/report-" + role,
                      "--timeout=180s", timeout=200)
@@ -226,6 +233,7 @@ def main():
                 if any(p["spec"]["containers"][0]["image"] != args.image for p in pods):
                     raise ValueError("deployed image differs from release")
             forward = start_forward()
+            stage = "primary-promotion"
             record["baseline_jobs"] = [submit() for _ in range(5)]
             record["synchronous_standby_names"] = sql("SHOW synchronous_standby_names")
             if not record["synchronous_standby_names"].startswith("ANY 1"):
@@ -244,6 +252,7 @@ def main():
             record["recovery_jobs"].append(submit())
             old_primary = primary()
             stopped_node = get("pod", old_primary)["spec"]["nodeName"]
+            stage = "node-failure"
             if not re.fullmatch(r"portfolio-ha-worker[0-9]*", stopped_node):
                 raise ValueError("fault target must be this cluster's worker")
             # A bounded, test-only completion delay makes outstanding work
@@ -296,6 +305,12 @@ def main():
             record["result"] = "passed"
         except Exception as exc:
             record["errors"].append(type(exc).__name__)
+            record["failed_stage"] = stage
+            print("Failed stage: " + stage, flush=True)
+            # Bootstrap diagnostics precede any application/registry secrets.
+            if stage in {"create-cluster", "create-namespace"} and isinstance(
+                    exc, subprocess.CalledProcessError):
+                print(exc.stderr, flush=True)
             # Metadata/status diagnostics only, never secrets or credential files.
             for kind in ("pods", "clusters.postgresql.cnpg.io", "events"):
                 try:

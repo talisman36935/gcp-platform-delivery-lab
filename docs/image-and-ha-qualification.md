@@ -33,10 +33,13 @@ synchronous_standby_names and successful reports. It deletes the primary pod und
 normal Kubernetes deletion semantics, requires promotion to a different primary
 and validates previously acknowledged reports and new work.
 
-It then queues twenty durably accepted jobs, observes outstanding work and abruptly
+It installs a bounded, test-only ten-second completion trigger, then queues twenty
+durably accepted jobs, observes outstanding work and abruptly
 stops only the kind worker hosting the current primary. It requires another primary
 promotion, two surviving API/worker replicas, recovery of accepted work and golden
-reports. The worker container is restarted and full three-instance/replica readiness
+reports. The trigger/function are removed on the promoted primary before recovery
+assertions; this changes no application image. The worker container is restarted
+and full three-instance/replica readiness
 must return. The recorded recovery interval includes control-plane detection and
 operator observation; it is not a zero-downtime or universal zero-data-loss promise.
 
