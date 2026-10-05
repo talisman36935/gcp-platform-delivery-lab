@@ -1,0 +1,138 @@
+name: Publish and qualify HA
+on:
+  workflow_dispatch:
+    inputs:
+      source_revision:
+        description: Reviewed main commit with successful Validate run
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: qualify-ha
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      actions: read
+      packages: write
+    outputs:
+      image: ${{ steps.release.outputs.image }}
+    steps:
+      - name: Require validated main source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_REVISION: ${{ inputs.source_revision }}
+        run: |
+          [[ "$SOURCE_REVISION" =~ ^[0-9a-f]{40}$ ]]
+          test "$(gh api repos/${{ github.repository }}/commits/main --jq .sha)" = "$SOURCE_REVISION"
+          gh api "repos/${{ github.repository }}/actions/workflows/validate.yaml/runs?head_sha=$SOURCE_REVISION&branch=main&event=push" --jq '.workflow_runs | any(.conclusion == "success")' | grep -Fx true
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ inputs.source_revision }}
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Publish immutable-source multi-architecture image
+        id: build
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8
+        with:
+          context: workload
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ghcr.io/talisman36935/report-workshop:sha-${{ inputs.source_revision }}
+          build-args: REVISION=${{ inputs.source_revision }}
+          provenance: mode=max
+          sbom: true
+      - name: Verify index and record release
+        id: release
+        env:
+          SOURCE_REVISION: ${{ inputs.source_revision }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          IMAGE="ghcr.io/talisman36935/report-workshop@$DIGEST"
+          python3 workload/deploy/release_record.py --image "$IMAGE" --revision "$SOURCE_REVISION"
+          echo "image=$IMAGE" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: image-release
+          path: output/image-release.json
+          retention-days: 30
+  arm-runtime:
+    needs: publish
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: read
+    services:
+      postgres:
+        image: postgres:18-alpine@sha256:77f585114c32fbca283dc835b0596f4e52b51b4c6662d7810b2f4084f60a1873
+        env:
+          POSTGRES_USER: workshop
+          POSTGRES_PASSWORD: local-demo-only
+          POSTGRES_DB: workshop
+        ports: ["5432:5432"]
+        options: --health-cmd "pg_isready -U workshop" --health-interval 2s --health-retries 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ inputs.source_revision }}
+          persist-credentials: false
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - name: Native ARM migration and golden report
+        env:
+          IMAGE: ${{ needs.publish.outputs.image }}
+        run: |
+          test "$(uname -m)" = aarch64
+          docker pull "$IMAGE"
+          docker run --rm --network host -e DATABASE_URL=postgres://workshop:local-demo-only@127.0.0.1:5432/workshop?sslmode=disable "$IMAGE" migrate
+          docker run -d --name workshop-arm-api --network host -e DATABASE_URL=postgres://workshop:local-demo-only@127.0.0.1:5432/workshop?sslmode=disable -e LISTEN_ADDR=127.0.0.1:18080 "$IMAGE" api
+          docker run -d --name workshop-arm-worker --network host -e DATABASE_URL=postgres://workshop:local-demo-only@127.0.0.1:5432/workshop?sslmode=disable "$IMAGE" worker
+          python3 workload/smoke.py
+      - name: Cleanup ARM processes
+        if: always()
+        run: docker rm -f workshop-arm-api workshop-arm-worker || true
+  kubernetes-ha:
+    needs: publish
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ inputs.source_revision }}
+          persist-credentials: false
+      - name: Install pinned local tools
+        run: |
+          bash scripts/install-ha-tools.sh "$RUNNER_TEMP/ha-tools"
+          echo "$RUNNER_TEMP/ha-tools" >> "$GITHUB_PATH"
+          python3 -m pip install PyYAML==6.0.2
+      - name: Qualify PostgreSQL failover and workload node loss
+        env:
+          IMAGE: ${{ needs.publish.outputs.image }}
+          SOURCE_REVISION: ${{ inputs.source_revision }}
+          GH_TOKEN: ${{ github.token }}
+          REGISTRY_USER: ${{ github.actor }}
+        run: python3 workload/deploy/qualify_kind.py --image "$IMAGE" --revision "$SOURCE_REVISION"
+      - name: Retain sanitized Kubernetes observations
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: kubernetes-ha
+          path: output/kubernetes-ha.json
+          retention-days: 30
