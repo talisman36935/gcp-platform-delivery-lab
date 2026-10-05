@@ -2,7 +2,7 @@
 
 ## Ephemeral HA cloud execution policy
 
-Follow the [ephemeral HA architecture and cost policy](plan/portfolio-demos/minimal-infrastructure.md)
+Follow the [ephemeral HA architecture and cost policy](architecture-cost.md)
 before activation. London multi-zone HA, low-cost viable nodes, full architecture,
 budget alerts and immediate audited cleanup are required. £2/run and one hour
 remain proposals, not approved or validated HA limits. Verified

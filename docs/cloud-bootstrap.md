@@ -46,7 +46,7 @@ handled as sensitive data. Never publish state, saved plans or credential caches
 
 ## Activation sequence
 
-Once Miles supplies the approved cloud settings and access is verified:
+Once cloud settings are approved and access is verified:
 
 1. Review the bootstrap plan under the operator identity.
 2. Create retained state/federation resources; record identifiers privately.

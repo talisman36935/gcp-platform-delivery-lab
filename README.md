@@ -56,11 +56,11 @@ Do not use this command against another Compose project.
 | GCP | Terraform lab foundation plus private-state/federated-CI bootstrap | Actual plan/apply, identity qualification and cloud teardown |
 | GitOps | Root platform ownership, restricted namespace delegation, disjoint identity check | Live reconciliation, delegated negative test, promotion/rollback |
 | Observability | Structured logs, metrics/Prometheus, optional OTel collector/Tempo and CPU/heap capture | Continuous profiles, log backend and investigation dashboards |
-| Portfolio | Strict local baseline records, missing-collector gate, detailed Labs specification | Qualified durable cloud bundles and website ingestion |
+| Portfolio | Strict local baseline records, missing-collector gate, historical investigation evidence | Qualified durable cloud bundles and website ingestion |
 
 ## Navigate
 
-- [Ephemeral London HA architecture, instance comparison and cost gates](docs/plan/portfolio-demos/minimal-infrastructure.md)
+- [Ephemeral London HA architecture, instance comparison and cost gates](docs/architecture-cost.md)
 
 - [Current architecture and decisions](docs/implementation.md)
 - [Validation and GCP activation boundary](docs/runbook.md)
@@ -69,12 +69,6 @@ Do not use this command against another Compose project.
 - [Trace correlation and CPU/heap investigation](docs/local-tracing-profiling.md)
 - [Controlled regression and original-image recovery](docs/local-regression-recovery.md)
 - [OpenAPI 3.1 contract](workload/internal/httpapi/openapi.json) (served at /openapi.json)
-- [Full strategy](docs/plan/portfolio-demo-strategy-2026-10-02.md)
-- [Application specification](docs/plan/portfolio-demos/application.md)
-- [Platform contracts](docs/plan/portfolio-demos/platforms.md)
-- [Evidence and website Labs integration](docs/plan/portfolio-demos/evidence-and-labs.md)
-- [Milestones and acceptance](docs/plan/portfolio-demos/delivery-plan.md)
-- [Annotated examples and references](docs/plan/portfolio-demos/references.md)
 
-Planning documents preserve the original proposal. Current implementation decisions
-in `docs/implementation.md` take precedence when describing what actually exists.
+Implementation records describe current behavior; the architecture profile distinguishes
+validated configuration from capabilities still requiring live qualification.

@@ -1,9 +1,8 @@
 # Ephemeral HA architecture and cost policy — 2026-10-05
 
-This supersedes the earlier one-node/minimal-feature proposal. The user wants the
-complex architecture, HA and full observability on the cheapest viable machines,
-for extremely brief runs. Minimize cost/lifetime, not architectural capabilities.
-The existing filename is retained so old links continue to resolve.
+This profile combines multi-zone availability with short-lived execution and
+cost-conscious node selection. Capacity, failover and cleanup are qualification
+requirements, not inferred from a successful deployment.
 
 ## Target topology and evidence
 
@@ -95,10 +94,11 @@ but no retention exception is approved. Keep it recoverable through cleanup, the
 follow the agreed deletion/retention policy. No silently retained billable resources.
 Portfolio evidence is sanitized historical data, not live control/credentials.
 
-## Implementation gap
+## Implementation status
 
-This is the target, not an implementation claim. GCP Terraform still models the
-earlier single-zone/one-node foundation; AWS rendering still models one worker and
-an x86 AMI. HA placement, ARM selection, replicated services/database, networking,
-failover evidence and spending controls require implementation and qualification.
-No cloud resource or billing setting is changed by this documentation update.
+GCP Terraform defines a regional London cluster with one e2-standard-2 worker per
+zone. AWS renders three one-node zonal groups using AL2023 ARM for t4g.large or
+x86 for t3a.large. Terraform mock tests and pinned CRD schema checks cover these
+contracts. Cloud placement/admission, workload/database HA, networking, failover
+and spending protections still require implementation and live qualification.
+No cloud deployment or billing configuration is claimed by static tests.

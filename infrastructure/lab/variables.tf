@@ -3,12 +3,22 @@ variable "project_id" {
   type        = string
 }
 variable "region" {
-  description = "Explicit approved GCP region."
+  description = "London region for the regional HA lab."
   type        = string
+  default     = "europe-west2"
+  validation {
+    condition     = var.region == "europe-west2"
+    error_message = "This profile is restricted to London."
+  }
 }
-variable "zone" {
-  description = "Single lab zone within region; not an HA configuration."
-  type        = string
+variable "zones" {
+  description = "Exactly three distinct London worker zones, one node per zone."
+  type        = set(string)
+  default     = ["europe-west2-a", "europe-west2-b", "europe-west2-c"]
+  validation {
+    condition     = length(var.zones) == 3 && alltrue([for zone in var.zones : can(regex("^europe-west2-[abc]$", zone))])
+    error_message = "Select the three distinct London zones."
+  }
 }
 variable "operator_cidr" {
   description = "Approved operator egress IPv4 CIDR for the Kubernetes API."

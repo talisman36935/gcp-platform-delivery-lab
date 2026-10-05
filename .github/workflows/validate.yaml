@@ -115,6 +115,7 @@ jobs:
       - run: terraform -chdir=bootstrap/terraform test
       - run: terraform -chdir=infrastructure/lab init -backend=false -input=false -lockfile=readonly
       - run: terraform -chdir=infrastructure/lab validate
+      - run: terraform -chdir=infrastructure/lab test
       - name: Render disjoint Config Sync owners
         run: |
           python3 -m pip install PyYAML==6.0.2

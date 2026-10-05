@@ -64,7 +64,8 @@ resource "google_project_iam_member" "node_service" {
 
 resource "google_container_cluster" "lab" {
   name                     = local.name
-  location                 = var.zone
+  location                 = var.region
+  node_locations           = sort(tolist(var.zones))
   network                  = google_compute_network.lab.id
   subnetwork               = google_compute_subnetwork.lab.id
   remove_default_node_pool = true
@@ -98,10 +99,19 @@ resource "google_container_cluster" "lab" {
 }
 
 resource "google_container_node_pool" "lab" {
-  name       = "lab"
-  cluster    = google_container_cluster.lab.id
-  location   = var.zone
-  node_count = 1
+  name           = "lab"
+  cluster        = google_container_cluster.lab.id
+  location       = var.region
+  node_locations = sort(tolist(var.zones))
+  node_count     = 1
+  management {
+    auto_repair  = true
+    auto_upgrade = true
+  }
+  upgrade_settings {
+    max_surge       = 0
+    max_unavailable = 1
+  }
   node_config {
     machine_type    = "e2-standard-2"
     disk_size_gb    = 30

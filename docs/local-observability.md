@@ -80,7 +80,7 @@ provenance, regression/recovery comparisons and website ingestion remain pending
 
 ## Cloud access reminder
 
-Before any cloud activation, prompt Miles for the approved account/project,
+Before any cloud activation, confirm with the operator for the approved account/project,
 region, budget, maximum run lifetime and scoped access setup. Prefer federated
 short-lived access; do not request pasted access keys or service-account JSON.
 No part of this local profile needs GCP or AWS credentials.

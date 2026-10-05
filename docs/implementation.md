@@ -34,7 +34,8 @@ that proves the fencing contract, not a completed process-kill experiment.
 ## ADR 003: GCP foundation with explicit activation gate
 
 Terraform owns APIs, network, NAT, GKE, nodes, fleet and Config Sync bootstrap.
-The initial GKE Standard configuration uses one zone/node and is not HA. NAT,
+The GKE Standard configuration uses a regional control plane and three London
+worker zones with one node per zone. This does not establish workload/database HA. NAT,
 GKE, disks and Config Sync may incur charges. An exact Config Sync version and
 root source commit must be supplied; provider schema validation is not runtime
 compatibility qualification.
