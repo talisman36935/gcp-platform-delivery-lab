@@ -60,6 +60,8 @@ Do not use this command against another Compose project.
 
 ## Navigate
 
+- [Minimal London topology, budget gates and immediate teardown](docs/plan/portfolio-demos/minimal-infrastructure.md)
+
 - [Current architecture and decisions](docs/implementation.md)
 - [Validation and GCP activation boundary](docs/runbook.md)
 - [Private state and federated CI bootstrap](docs/cloud-bootstrap.md)

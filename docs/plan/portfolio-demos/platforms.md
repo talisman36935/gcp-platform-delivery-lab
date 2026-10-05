@@ -4,6 +4,11 @@ Status: implementation plan, 2026-10-02. Parent: [strategy](../portfolio-demo-st
 
 ## Shared delivery contract
 
+The [minimal infrastructure and cost policy](minimal-infrastructure.md) takes
+precedence for the first demos: London, one cluster/node per cloud, one cloud at
+a time, in-cluster disposable services and immediate audited teardown. Broader
+profiles below are optional; budget/lifetime proposals remain unapproved.
+
 Cloud repos own infrastructure, environment configuration and experiment execution.
 The application repo owns application releases and provider-neutral contracts.
 The portfolio owns presentation. Record app commit, config commit, infrastructure

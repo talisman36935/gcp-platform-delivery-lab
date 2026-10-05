@@ -1,5 +1,13 @@
 # Validation and activation runbook
 
+## Minimal cloud execution policy
+
+Follow the [minimal infrastructure and cost policy](plan/portfolio-demos/minimal-infrastructure.md)
+before activation. London is selected; budget alerts and immediate cleanup are
+required. £2/run and one hour remain proposals, not approved limits. Verified
+spending protection and bootstrap retention decisions remain activation gates.
+Existing topology/intent validators do not yet enforce this complete policy.
+
 ## Credential-free checks
 
 Use Go 1.27.1, Terraform 1.16.4, kubectl with Kustomize, Python 3 and PyYAML 6.0.2.
