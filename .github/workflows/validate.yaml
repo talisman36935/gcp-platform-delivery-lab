@@ -52,6 +52,8 @@ jobs:
         run: |
           python3 -m pip install jsonschema==4.23.0
           python3 -m unittest discover -s evidence -v
+          python3 -m unittest discover -s deploy -v
+          python3 deploy/check_schemas.py
           python3 evidence/check_api.py
           python3 evidence/record.py --revision "$SOURCE_REVISION" --output output/baseline.json
           python3 evidence/validate.py output/baseline.json
@@ -72,6 +74,12 @@ jobs:
           python3 evidence/regression.py --revision "$SOURCE_REVISION"
           python3 evidence/validate_regression.py output/regression-recovery.json
           go tool pprof -top -nodecount=30 output/regressed-cpu.pprof
+      - name: API replica continuity and real worker crash recovery
+        env:
+          SOURCE_REVISION: ${{ github.sha }}
+        run: |
+          python3 evidence/replica_recovery.py --revision "$SOURCE_REVISION"
+          python3 evidence/validate_replica_recovery.py output/replica-recovery.json
       - name: Missing collector must fail evidence without failing the workload
         # Regression/recovery completes first so all phases retain the collector.
         env:
@@ -97,8 +105,8 @@ jobs:
       - name: Diagnostics and cleanup
         if: always()
         run: |
-          docker compose -f compose.yaml -f compose.tracing.yaml --profile observability logs --no-color --tail=100
-          docker compose -f compose.yaml -f compose.tracing.yaml --profile observability down --volumes
+          docker compose -f compose.yaml -f compose.tracing.yaml -f compose.replicas.yaml --profile observability logs --no-color --tail=100
+          docker compose -f compose.yaml -f compose.tracing.yaml -f compose.replicas.yaml --profile observability down --volumes
   terraform:
     runs-on: ubuntu-24.04
     timeout-minutes: 10

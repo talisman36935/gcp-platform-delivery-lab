@@ -1,0 +1,26 @@
+# Local process-replica experiment only; PostgreSQL remains a single instance.
+services:
+  api-replica:
+    image: report-workshop-api
+    command: [api]
+    environment:
+      DATABASE_URL: postgres://workshop:local-demo-only@db:5432/workshop?sslmode=disable
+      LISTEN_ADDR: 0.0.0.0:8080
+      METRICS_ADDR: 0.0.0.0:9090
+    ports: ["127.0.0.1:18081:8080"]
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 256m
+    cpus: 1
+  worker-replica:
+    image: report-workshop-worker
+    command: [worker]
+    environment:
+      DATABASE_URL: postgres://workshop:local-demo-only@db:5432/workshop?sslmode=disable
+      METRICS_ADDR: 0.0.0.0:9090
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 256m
+    cpus: 1

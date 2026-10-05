@@ -63,6 +63,7 @@ Do not use this command against another Compose project.
 - [Ephemeral London HA architecture, instance comparison and cost gates](docs/architecture-cost.md)
 
 - [Current architecture and decisions](docs/implementation.md)
+- [Application replicas, crash recovery and dormant Kubernetes profile](docs/application-replicas.md)
 - [Validation and GCP activation boundary](docs/runbook.md)
 - [Private state and federated CI bootstrap](docs/cloud-bootstrap.md)
 - [Local metrics, evidence recorder and outage check](docs/local-observability.md)
