@@ -166,7 +166,7 @@ func process(ctx context.Context, s application.WorkQueue, metrics *telemetry.Me
 		passes = 64
 	}
 	analyzer := func(fixture string) (domain.Report, error) { return domain.AnalyzeRepeated(fixture, passes) }
-	j, err := application.ProcessOneWithAnalyzer(ctx, s, revision, analyzer, traces)
+	j, err := application.ProcessOneWithAnalyzerAndPoll(ctx, s, revision, analyzer, metrics.ObservePoll, traces)
 	attempt := 0
 	if j != nil {
 		attempt = j.Attempt

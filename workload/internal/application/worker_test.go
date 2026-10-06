@@ -46,3 +46,30 @@ func TestProcessOne(t *testing.T) {
 		})
 	}
 }
+
+func TestProcessOneReportsPollBeforeLongProcessing(t *testing.T) {
+	queue := &queueStub{}
+	var observed error
+	polled := false
+	job, err := ProcessOneWithAnalyzerAndPoll(context.Background(), queue, "test", func(string) (domain.Report, error) {
+		if !polled || observed != nil {
+			t.Fatal("poll was not reported before analysis")
+		}
+		return domain.Report{Tokens: 11}, nil
+	}, func(err error) { polled, observed = true, err })
+	if err != nil || job == nil || !polled || observed != nil {
+		t.Fatalf("job=%v err=%v polled=%v observed=%v", job, err, polled, observed)
+	}
+}
+
+func TestProcessOneReportsFailedPoll(t *testing.T) {
+	want := errors.New("private database error")
+	queue := &queueStub{claimErr: want}
+	var observed error
+	_, err := ProcessOneWithAnalyzerAndPoll(context.Background(), queue, "test", domain.Analyze, func(err error) {
+		observed = err
+	})
+	if !errors.Is(err, want) || !errors.Is(observed, want) {
+		t.Fatalf("err=%v observed=%v", err, observed)
+	}
+}

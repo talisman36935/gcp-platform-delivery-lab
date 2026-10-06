@@ -35,15 +35,33 @@ func ProcessOne(ctx context.Context, queue WorkQueue, revision string, observers
 // ProcessOneWithAnalyzer supports release variants without coupling use cases
 // to experiment configuration or infrastructure SDKs.
 func ProcessOneWithAnalyzer(ctx context.Context, queue WorkQueue, revision string, analyze func(string) (domain.Report, error), observers ...AttemptObserver) (result *domain.Job, err error) {
+	return ProcessOneWithAnalyzerAndPoll(ctx, queue, revision, analyze, nil, observers...)
+}
+
+// ProcessOneWithAnalyzerAndPoll reports a successful dependency poll as soon as
+// dispatch and claim complete, independently of subsequent job processing time.
+func ProcessOneWithAnalyzerAndPoll(ctx context.Context, queue WorkQueue, revision string, analyze func(string) (domain.Report, error), observePoll func(error), observers ...AttemptObserver) (result *domain.Job, err error) {
 	if err := queue.Dispatch(ctx); err != nil {
+		if observePoll != nil {
+			observePoll(err)
+		}
 		return nil, err
 	}
 	job, err := queue.Claim(ctx, revision, 30*time.Second)
 	if errors.Is(err, domain.ErrNotFound) {
+		if observePoll != nil {
+			observePoll(nil)
+		}
 		return nil, nil
 	}
 	if err != nil {
+		if observePoll != nil {
+			observePoll(err)
+		}
 		return nil, err
+	}
+	if observePoll != nil {
+		observePoll(nil)
 	}
 	defer func() {
 		if err != nil {

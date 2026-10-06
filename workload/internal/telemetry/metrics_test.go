@@ -82,10 +82,9 @@ func TestWorkerReadinessRequiresFreshHealthyCycles(t *testing.T) {
 }
 
 func TestLocalWorkerReadinessDoesNotRequireCloudDispatcher(t *testing.T) {
-	now := time.Now()
 	worker := New("worker", "test")
-	worker.iterationOK.Store(now.UnixNano())
-	if !worker.workerReadyAt(now) {
+	worker.ObservePoll(nil)
+	if !worker.workerReadyAt(time.Now()) {
 		t.Fatal("successful local idle poll should be ready")
 	}
 }

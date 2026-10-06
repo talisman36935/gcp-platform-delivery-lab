@@ -117,6 +117,13 @@ func (m *Metrics) ObserveIteration(completed bool, attempt int, err error, elaps
 	m.iterations.WithLabelValues(outcome).Inc()
 }
 
+// ObservePoll records only a completed, successful queue/database poll.
+func (m *Metrics) ObservePoll(err error) {
+	if m.role == "worker" && err == nil {
+		m.iterationOK.Store(time.Now().UnixNano())
+	}
+}
+
 // RequireDispatchHealth includes the independent cloud outbox publisher in readiness.
 func (m *Metrics) RequireDispatchHealth(required bool) {
 	m.dispatchRequired.Store(required)
