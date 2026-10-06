@@ -1,9 +1,8 @@
 mock_provider "google" {}
 
 variables {
-  project_id        = "synthetic-portfolio-test"
-  region            = "europe-west2"
-  state_bucket_name = "synthetic-portfolio-state"
+  project_id = "synthetic-portfolio-test"
+  region     = "europe-west2"
 }
 
 run "bootstrap_has_no_default_cloud_apply_roles" {
@@ -13,11 +12,11 @@ run "bootstrap_has_no_default_cloud_apply_roles" {
     error_message = "Bootstrap must not silently grant project apply privileges."
   }
   assert {
-    condition     = google_storage_bucket.state.public_access_prevention == "enforced" && google_storage_bucket.state.uniform_bucket_level_access
-    error_message = "State must remain private under uniform access."
+    condition     = output.state_contract.backend == "local" && output.state_contract.retained == false && output.state_contract.artifact_upload == false
+    error_message = "Terraform state must be local to an ephemeral run workspace and never uploaded."
   }
   assert {
-    condition     = length(google_billing_budget.cost_alerts) == 0
+    condition     = length(google_billing_budget.cost_alerts) == 0 && length(google_monitoring_alert_policy.lifecycle_events) == 0
     error_message = "Cost alerts must be explicitly enabled with private billing inputs."
   }
 }
@@ -34,6 +33,10 @@ run "cost_alerts_cover_early_actual_and_forecast_thresholds" {
   assert {
     condition     = length(google_billing_budget.cost_alerts["enabled"].threshold_rules) == 7
     error_message = "Budget requires five actual thresholds and two forecast warnings."
+  }
+  assert {
+    condition     = length(google_monitoring_alert_policy.lifecycle_events) == 6 && can(regex("teardown-failed", google_monitoring_alert_policy.lifecycle_events["teardown-failed"].conditions[0].condition_matched_log[0].filter))
+    error_message = "Lifecycle email alerts must separately cover all six events, including teardown failure."
   }
   assert {
     condition     = google_billing_budget.cost_alerts["enabled"].budget_filter[0].credit_types_treatment == "EXCLUDE_ALL_CREDITS"

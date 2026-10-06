@@ -24,7 +24,7 @@ go vet ./...
 TEST_DATABASE_URL='postgres://workshop:local-demo-only@127.0.0.1:5432/workshop?sslmode=disable' go test -race ./...
 cd ..
 terraform fmt -check -recursive infrastructure
-terraform -chdir=infrastructure/lab init -backend=false -input=false -lockfile=readonly
+terraform -chdir=infrastructure/lab init -input=false -lockfile=readonly
 terraform -chdir=infrastructure/lab validate
 python3 scripts/check-ownership.py
 ```
@@ -42,14 +42,26 @@ because validate passes. Required outstanding gates:
    GBP billing currency, £5 per-run budget and 60-minute expiry.
    Configure and test the GCP cost-alert email plus the 25/50/75/90/100% actual
    and 75/100% forecast thresholds before provisioning.
-2. Activate and qualify the [separate state/federation bootstrap](cloud-bootstrap.md).
-   Never commit state, plans, service-account keys or environment credentials.
+2. Activate and qualify the [separate identity/alert bootstrap](cloud-bootstrap.md).
+   Terraform state is local to a trusted operator or short-lived run workspace;
+   never upload it as an artifact/cache or commit it. Never commit plans,
+   service-account keys or environment credentials.
 3. Qualify the selected GKE/Config Sync versions and fleet RBAC behavior.
 4. Add application cloud IAM, Pub/Sub/GCS resources and adapters, image release
    provenance, network policies and workload deployment.
-5. Implement run-scoped inventory, evidence export and independently verifiable
-   teardown. API enablement is retained deliberately; cluster deletion protection
+5. Implement run-scoped inventory, evidence export and an independent expiry
+   janitor. Job-local Terraform state is not a replacement: runner loss must still
+   permit exact-scope cleanup from ownership labels. Cluster deletion protection
    must be changed explicitly for approved teardown.
+
+The bootstrap Terraform root includes six opt-in event-specific Monitoring log
+alerts plus the [`notify_lifecycle.py`](../scripts/notify_lifecycle.py) publisher. Once
+bootstrapped, emit only the allowlisted `created`, `ready`, `expiry-warning`,
+`teardown-started`, `teardown-passed` and `teardown-failed` events. A scheduler or
+workflow must call the 15-minute expiry warning; no scheduler or cloud-run workflow
+is implemented yet. Alert creation and delivery have not been cloud-tested.
+The emitting identity needs `logging.logWriter` on the exact lab project; do not
+grant broad Monitoring administration to the run workflow.
 
 No workflow in this repo has cloud credentials or performs Terraform apply.
 Budget intent is not a spending cap. A future cloud plan must list all billable

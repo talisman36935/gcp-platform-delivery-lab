@@ -3,19 +3,11 @@ variable "project_id" {
   type        = string
 }
 variable "region" {
-  description = "Approved region for retained state storage."
+  description = "Approved region for the temporary GCP lab."
   type        = string
-}
-variable "state_bucket_name" {
-  description = "Globally unique, public-safe name for private retained Terraform state."
-  type        = string
-  validation {
-    condition     = can(regex("^[a-z][a-z0-9-]{2,61}[a-z0-9]$", var.state_bucket_name))
-    error_message = "Provide a safe explicit bucket name."
-  }
 }
 variable "approved_project_roles" {
-  description = "Separately reviewed cloud apply roles. Empty grants state access only."
+  description = "Separately reviewed cloud apply roles. Empty grants no project roles."
   type        = set(string)
   default     = []
   validation {
@@ -25,7 +17,7 @@ variable "approved_project_roles" {
 }
 
 variable "enable_cost_alerts" {
-  description = "Create the project-scoped gross-cost budget and private email channel."
+  description = "Create the project gross-cost budget, private email channel and lifecycle log alert."
   type        = bool
   default     = false
 }
@@ -37,13 +29,13 @@ variable "billing_account_id" {
 }
 
 variable "cost_budget_currency" {
-  description = "Must be GBP so the configured monthly gross budget enforces the approved £5 amount."
+  description = "Must be GBP so the monthly gross-cost warning threshold matches the approved currency."
   type        = string
   default     = ""
 }
 
 variable "cost_budget_amount" {
-  description = "Gross monthly budget in GBP; must be positive and no greater than £5."
+  description = "Gross monthly warning threshold in GBP; must be positive and no greater than £5."
   type        = number
   default     = 0
 }

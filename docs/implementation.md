@@ -16,8 +16,10 @@ and restricted application RBAC. They deliberately remain blocked pending provid
 network/identity qualification; existing GitOps roots have not been switched.
 See [delivery boundaries](gitops-delivery.md). Hosted image/HA evidence is recorded
 separately in [image qualification](image-and-ha-qualification.md).
-Independent teardown/TTL, approved cost protection, live cloud HA, full telemetry
-and durable portfolio ingestion remain incomplete. No cloud resources were created.
+Independent teardown/TTL, live cloud HA, full telemetry and durable portfolio
+ingestion remain incomplete. Cost thresholds and lifecycle notifications are now
+modeled, but no budget/channel has been applied or delivery-tested. No cloud
+resources were created.
 
 The companion's hosted Flux experiment now qualifies actual application delivery,
 configuration promotion/rollback/drift repair, controller denial and one local

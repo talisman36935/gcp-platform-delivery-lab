@@ -58,7 +58,7 @@ approximately $0.11/$0.10 for 30 minutes at steady topology. The 8 GiB fallbacks
 are approximately $0.3256/hour AWS and $0.30103426/hour GCP before other services.
 These are NOT complete run estimates: add disks, HA database, NAT/IPs/LBs, transfer,
 telemetry, Config Sync feature fees where applicable, queues/storage, registry,
-retained bootstrap and provisioning/deletion/surge-node time.
+temporary identity/alert bootstrap and provisioning/deletion/surge-node time.
 
 Start on-demand for repeatable qualification. Compare live Spot offers for a
 separate interruption profile, not a fixed assumed discount. Burstable AWS CPU
@@ -91,9 +91,11 @@ Configure layered notifications before activation:
 - AWS account budget: actual gross-cost alerts at 25%, 50%, 75%, 90% and 100%,
   plus forecast alerts at 75% and 100% when forecast data exists; use a confirmed
   SNS email subscription to the user-provided AWS lab mailbox.
-- The not-yet-built cloud lifecycle workflow must send notices (created, ready,
-  15 minutes to expiry, teardown started, teardown/audit passed or failed) to the
-  same provider-specific mailbox.
+- The not-yet-built cloud lifecycle workflow must use the provider event publisher
+  for notices (created, ready, 15 minutes to expiry, teardown started,
+  teardown/audit passed or failed) to the same provider-specific mailbox. GCP's
+  log-alert emitter is implemented but not yet scheduled or connected to a cloud
+  run; delivery has not been tested.
 - At 75% of the pre-run ceiling, stop optional tests and begin teardown. At 90%,
   fail the run and force teardown. At expiry, the independent janitor deletes the
   run even if the orchestrator is unavailable. Alert delivery failure is a
@@ -117,24 +119,26 @@ Audit compute/clusters, disks/snapshots, NAT/LBs, interfaces/IPs, buckets/object
 versions, queues and run-scoped logs/images. Insufficient audit permissions mean
 incomplete cleanup evidence. Record eventual deletion and delayed billing separately.
 
-Private state/federation bootstrap currently survives normal lab teardown by design,
-but no retention exception is approved. This conflicts with the requirement that
-all resources be ephemeral; do not activate cloud runs until a teardown-safe state
-design or an explicit, bounded retention/deletion procedure is agreed. No silently
-retained billable resources.
+Terraform state now uses local `.terraform/` files instead of a retained GCS state
+bucket. Delete the operator/run workspace only after independent provider inventory
+confirms teardown; never upload state to workflow artifacts/cache. Federation and
+alert bootstrap resources still need explicit destruction after each cloud cycle.
+The independent expiry janitor is not implemented, so cloud activation remains
+blocked until it survives runner loss and has a verified least-privilege delete path.
 Portfolio evidence is sanitized historical data, not live control/credentials.
 
 ## Implementation status
 
 GCP Terraform defines a regional London cluster with one e2-medium worker per
 zone. AWS renders three one-node zonal groups using AL2023 ARM for t4g.medium or
-x86 for t3a.medium; the 8 GiB sizes are documented fallback only. Budget alert
-thresholds and private recipient inputs are implemented as configuration, but no
-cloud budget or email channel has been created or delivery tested. The approved
-recipients must be supplied through private deployment configuration. Resource
-fit, cloud placement/admission, workload/database HA, networking, failover and
-spending protections still require live qualification. No cloud deployment or
-billing configuration is claimed by static tests.
+x86 for t3a.medium; the 8 GiB sizes are documented fallback only. GCP includes a
+log-matched email alert for allowlisted lifecycle events; AWS includes an SNS
+lifecycle publisher. Cost alerts and private recipient inputs are modeled, but no
+cloud budget, channel, or lifecycle notification has been created or delivery-tested.
+The providers' emitters are not wired to a run workflow/scheduler. Resource fit,
+cloud placement/admission, workload/database HA, networking, failover, independent
+expiry cleanup and spending protections still require live qualification. No cloud
+deployment or billing configuration is claimed by static tests.
 
 Separate [hosted Kubernetes qualification](image-and-ha-qualification.md) passed
 three-instance PostgreSQL promotion, primary-worker loss, preservation of all 31

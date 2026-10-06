@@ -2,32 +2,21 @@ locals {
   repository_id = "1402116284"
   owner_id      = "68283664"
   workflow_ref  = "talisman36935/gcp-platform-delivery-lab/.github/workflows/cloud-run.yaml@refs/heads/main"
+  lifecycle_events = toset([
+    "created", "ready", "expiry-warning", "teardown-started",
+    "teardown-passed", "teardown-failed",
+  ])
 }
 
 resource "google_project_service" "bootstrap" {
   for_each = toset([
     "iam.googleapis.com", "iamcredentials.googleapis.com",
-    "sts.googleapis.com", "storage.googleapis.com",
-    "cloudresourcemanager.googleapis.com",
+    "sts.googleapis.com", "cloudresourcemanager.googleapis.com",
     "billingbudgets.googleapis.com", "monitoring.googleapis.com",
+    "logging.googleapis.com",
   ])
   service            = each.value
-  disable_on_destroy = false
-}
-
-resource "google_storage_bucket" "state" {
-  name                        = var.state_bucket_name
-  location                    = var.region
-  uniform_bucket_level_access = true
-  public_access_prevention    = "enforced"
-  force_destroy               = false
-  versioning { enabled = true }
-  labels = {
-    owner     = "portfolio-lab"
-    lifecycle = "retained-bootstrap"
-  }
-  lifecycle { prevent_destroy = true }
-  depends_on = [google_project_service.bootstrap]
+  disable_on_destroy = true
 }
 
 resource "google_service_account" "ci" {
@@ -69,12 +58,6 @@ resource "google_service_account_iam_member" "federation" {
   member             = "principalSet://iam.googleapis.com/${google_iam_workload_identity_pool.github.name}/attribute.repository_id/${local.repository_id}"
 }
 
-resource "google_storage_bucket_iam_member" "state_writer" {
-  bucket = google_storage_bucket.state.name
-  role   = "roles/storage.objectAdmin"
-  member = "serviceAccount:${google_service_account.ci.email}"
-}
-
 resource "google_project_iam_member" "approved_apply_roles" {
   for_each = var.approved_project_roles
   project  = var.project_id
@@ -85,7 +68,7 @@ resource "google_project_iam_member" "approved_apply_roles" {
 resource "google_monitoring_notification_channel" "cost_email" {
   for_each     = var.enable_cost_alerts ? toset(["enabled"]) : toset([])
   project      = var.project_id
-  display_name = "Portfolio lab budget email"
+  display_name = "Portfolio lab alerts email"
   type         = "email"
   labels       = { email_address = var.cost_alert_email }
   depends_on   = [google_project_service.bootstrap]
@@ -145,4 +128,41 @@ resource "google_billing_budget" "cost_alerts" {
       error_message = "Enabled alerts require a billing account, GBP budget, and amount no greater than the approved £5 ceiling."
     }
   }
+}
+
+resource "google_monitoring_alert_policy" "lifecycle_events" {
+  for_each     = var.enable_cost_alerts ? local.lifecycle_events : toset([])
+  project      = var.project_id
+  display_name = "Portfolio lab ${each.key}"
+  combiner     = "OR"
+  severity     = "WARNING"
+
+  documentation {
+    mime_type = "text/markdown"
+    content   = "The ${each.key} lifecycle event was emitted for a portfolio lab run. Check the run ID. Treat expiry warnings and teardown failures as urgent."
+  }
+
+  conditions {
+    display_name = "Lab ${each.key} event"
+    condition_matched_log {
+      filter = <<-EOT
+        resource.type="global"
+        logName="projects/${var.project_id}/logs/portfolio-lifecycle"
+        jsonPayload.schema="portfolio.lifecycle.v1"
+        jsonPayload.event="${each.key}"
+      EOT
+      label_extractors = {
+        run_id = "EXTRACT(jsonPayload.run_id)"
+      }
+    }
+  }
+
+  notification_channels = [google_monitoring_notification_channel.cost_email["enabled"].name]
+
+  alert_strategy {
+    notification_rate_limit { period = "60s" }
+    auto_close = "3600s"
+  }
+
+  depends_on = [google_project_service.bootstrap]
 }

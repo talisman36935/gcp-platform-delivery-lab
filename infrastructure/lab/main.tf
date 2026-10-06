@@ -4,14 +4,14 @@ locals {
     "compute.googleapis.com", "container.googleapis.com",
     "gkehub.googleapis.com", "anthosconfigmanagement.googleapis.com",
     "gkeconnect.googleapis.com",
-    "logging.googleapis.com", "monitoring.googleapis.com",
+    "storage.googleapis.com", "pubsub.googleapis.com",
   ])
 }
 
 resource "google_project_service" "lab" {
   for_each           = local.apis
   service            = each.value
-  disable_on_destroy = false
+  disable_on_destroy = true
 }
 
 resource "google_compute_network" "lab" {

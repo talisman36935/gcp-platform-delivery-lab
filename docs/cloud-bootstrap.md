@@ -1,8 +1,9 @@
 # GCP state and federated CI bootstrap
 
 The bootstrap Terraform root is separate from the disposable lab root. It declares
-private/versioned GCS state, GitHub federation, a CI service account and explicitly
-reviewed project roles. This configuration is validated without credentials;
+GitHub federation, a CI service account, project budget/lifecycle alerts and
+explicitly reviewed project roles. Terraform state is local to a trusted operator
+or short-lived run workspace. This configuration is validated without credentials;
 activation waits for the chosen project, region, budget/lifetime and access setup.
 
 ## Identity contract
@@ -13,9 +14,9 @@ Those IDs were verified through GitHub's repository API on 2026-10-04.
 The workflow file is reserved for the later cloud lifecycle implementation;
 ordinary Validate/fork jobs cannot use this trust.
 
-The account initially receives state-bucket object access only. Project roles
-default to an empty set; cloud provisioning needs an explicitly reviewed role
-list. Owner/Editor are rejected. No service-account key resource is created.
+Project roles default to an empty set; cloud provisioning needs an explicitly
+reviewed role list. Owner/Editor are rejected. No service-account key resource is
+created. No retained GCS state bucket or state-writer binding is created.
 Initial bootstrap still needs an authorized operator's short-lived login; GitHub
 cannot federate into a provider that does not yet exist.
 
@@ -32,17 +33,20 @@ References:
 
 ## State ownership
 
-Bootstrap owns IAM/federation/state APIs and its retained bucket. The lab root owns
-GKE/network/fleet/configuration APIs. The bucket blocks public access, enables
-object versioning, refuses force deletion and has Terraform prevent_destroy.
-It remains outside ordinary lab teardown. IAM/federation must remain recoverable
-while cloud cleanup is still pending.
+Bootstrap owns IAM/federation/budget/alert APIs, including the shared Logging and
+Monitoring API enablement. The lab root owns GKE/network/fleet/configuration APIs
+and its Storage/Pub/Sub enablement. Both roots use local state files under their
+own `.terraform/` directories. This avoids a persistent GCS backend, but means an
+independent provider-side run inventory/janitor is mandatory if the workflow
+runner disappears. Never upload either root's state as an Actions artifact/cache.
+Preserve state until independent provider inventory confirms deletion; then remove
+the local workspace/state.
 
-The lab root declares a partial GCS backend. Future init supplies an approved
-bucket and prefix through backend configuration. Ordinary CI uses backend=false
-and never reads live state. Initial bootstrap starts locally, then its state must
-be migrated deliberately to the separate bootstrap prefix and the local copy
-handled as sensitive data. Never publish state, saved plans or credential caches.
+The lab root's local backend path is `.terraform/ephemeral-lab.tfstate`; the
+bootstrap root uses `.terraform/ephemeral-bootstrap.tfstate`. Credential-free CI
+initializes these local backends for schema/tests but never applies or reads live
+state. Terraform state contains sensitive resource details: never publish state,
+saved plans or credential caches.
 
 ## Activation sequence
 
@@ -52,13 +56,18 @@ Once cloud settings are approved and access is verified:
 2. Configure the approved private cost-alert recipient, enable the project budget,
    and set its GBP amount to at most £5 with five actual and two forecast thresholds.
    Budget/email inputs and Terraform state must stay private.
-3. Create the reviewed state/federation resources; record identifiers privately.
-4. Migrate bootstrap state and configure the lab backend with separate prefixes.
-5. Review the minimum project role set and the dedicated lifecycle workflow.
-6. Test budget notification delivery and token acceptance/rejection for allowed/
-   forbidden workflow contexts.
-7. Only then plan the bounded lab create/run/export/delete cycle.
+3. Create the reviewed federation/budget/alert resources; record identifiers
+   privately.
+4. Confirm both roots use local state and neither uploads state to artifacts/cache.
+5. Review the minimum project role set and dedicated lifecycle workflow.
+6. Test budget and lifecycle notification delivery plus token acceptance/rejection
+   for allowed/forbidden workflow contexts.
+7. Only then plan a bounded lab create/run/export/delete cycle; preserve state until
+   independent resource inventory confirms deletion.
 
-Provider validation does not prove claim evaluation, cloud permissions, bucket
-locking/recovery or the lifecycle. Those require actual qualification. No cloud
+Provider validation does not prove claim evaluation, cloud permissions, local-state
+recovery, alert delivery or the lifecycle. Those require actual qualification. The
+lifecycle event publisher and six event-specific log alert policies are implemented,
+but are not wired to a run workflow. The
+independent expiry janitor is still absent. No cloud
 apply workflow or cloud resources have been activated by this change.
