@@ -7,7 +7,7 @@ ARG REVISION=development
 ARG ANALYSIS_VARIANT=baseline
 ARG TARGETOS
 ARG TARGETARCH
-RUN CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -trimpath -ldflags="-s -w -X main.revision=${REVISION} -X main.analysisVariant=${ANALYSIS_VARIANT}" -o /workshop ./cmd/workshop
+RUN --mount=type=cache,target=/root/.cache/go-build CGO_ENABLED=0 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -trimpath -ldflags="-s -w -X main.revision=${REVISION} -X main.analysisVariant=${ANALYSIS_VARIANT}" -o /workshop ./cmd/workshop
 FROM scratch
 ARG REVISION=development
 ARG ANALYSIS_VARIANT=baseline
