@@ -1,5 +1,30 @@
 # Image release and hosted HA qualification
 
+## Workload-identity-separated release — 2026-10-06
+
+Source `32c98ffd9cacb528c2d017f7ea39b54536ca2211` passed GCP Validate
+[37493189725](https://github.com/talisman36935/gcp-platform-delivery-lab/actions/runs/37493189725)
+and Publish and qualify HA
+[37493759179](https://github.com/talisman36935/gcp-platform-delivery-lab/actions/runs/37493759179)
+for `ghcr.io/talisman36935/report-workshop@sha256:47c7464df5cb1d20ba05eeb391d211309919c477503316d7c8fcf6d4feb43fe5`.
+Native ARM application smoke, Kubernetes HA and anonymous AMD64/ARM64 image
+content verification passed. The
+[HA observation](observations/32c98ff/kubernetes-ha.json) records database primary
+promotion in 60.238 seconds and primary-worker loss recovery in 79.268 seconds;
+twenty accepted jobs were outstanding at node loss, two API/worker replicas
+survived, golden reports were preserved, full readiness returned and the cluster
+was deleted. The
+[anonymous-pull record](observations/32c98ff/anonymous-pull.json) records SHA256
+verification of the index, both platform manifests/configs and runtime layers
+(28,915,114 bytes).
+
+This is Kubernetes/PostgreSQL process behavior on one hosted runner with three
+labelled simulated workers. No cloud was provisioned and no physical zone failure,
+cloud CSI, IAM or cloud telemetry was tested. The source/image pair is consumed by
+the companion AWS fixture; hosted application GitOps against it passed
+[37496120127](https://github.com/talisman36935/aws-kubernetes-reconciliation-lab/actions/runs/37496120127),
+but this remains local kind/Flux evidence, not AWS/EKS qualification.
+
 ## Current adapter-capable release — 2026-10-06
 
 Source `0e0a6133a18e4cfb10aae4defabd5b8f52ec69b5` passed full Validate

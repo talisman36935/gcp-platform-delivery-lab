@@ -69,15 +69,19 @@ Unit tests prove disjoint identities, immutable release inputs, no legacy capabi
 fallback, schema init gates, owner/backend matching and limited application RBAC.
 Focused renderer tests also require distinct API/worker/migration identities and
 reject cloud settings or the AWS token projection on API/migration pods. The AWS
-repository remains pinned to its previously qualified shared source/image until
-this renderer revision has its own exact-source GCP validation and HA qualification;
-its existing observation is not retroactively upgraded by these tests.
+repository pins this exact renderer source/image after GCP validation, native ARM
+and hosted HA qualification; its identity-separated fixture and hosted application
+GitOps run passed without cloud credentials or resources. See the
+[AWS workload lock](https://github.com/talisman36935/aws-kubernetes-reconciliation-lab/blob/main/workload/source.json)
+and [hosted qualification record](https://github.com/talisman36935/aws-kubernetes-reconciliation-lab/blob/main/docs/observations/372f432/workload-gitops.json).
+That observation is local kind/Flux evidence only and does not qualify live AWS
+IAM, EKS/CAPA/ACK, physical-zone failures, cloud networking or storage.
 Rendered manifests, IAM token projections and Flux readiness expressions are not
 live Config Sync or cloud authorization/admission evidence. The companion AWS repo's
-[hosted Flux app experiment](https://github.com/talisman36935/aws-kubernetes-reconciliation-lab/blob/main/docs/observations/d418d3f/qualification.md)
-now passed baseline/config promotion/rollback/drift repair, twelve golden jobs,
+[hosted Flux app experiment](https://github.com/talisman36935/aws-kubernetes-reconciliation-lab/blob/main/docs/observations/372f432/workload-gitops.json)
+passed baseline/config promotion/rollback/drift repair, twelve golden jobs,
 actual delegated-controller denial, local network allow/deny probes and cleanup in
-[37444041498](https://github.com/talisman36935/aws-kubernetes-reconciliation-lab/actions/runs/37444041498).
+[37496120127](https://github.com/talisman36935/aws-kubernetes-reconciliation-lab/actions/runs/37496120127).
 It derives the local fixture from this pinned shared renderer, adds an explicit
 operator/DB/DNS/local API overlay and uses the same Deployment CEL health contract.
 The generic Flux renderer now emits that contract; its unit tests require the exact
