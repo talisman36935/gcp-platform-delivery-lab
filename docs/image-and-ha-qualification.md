@@ -30,7 +30,8 @@ complete before the three API/worker replica Deployments are applied.
 
 The test observes actual placement, ready replicas, immutable image references,
 synchronous_standby_names and successful reports. It deletes the primary pod under
-normal Kubernetes deletion semantics, requires promotion to a different primary
+an explicit thirty-second termination grace (without force deletion), requires
+promotion to a different primary
 and validates previously acknowledged reports and new work.
 
 It installs a bounded, test-only ten-second completion trigger, then queues twenty

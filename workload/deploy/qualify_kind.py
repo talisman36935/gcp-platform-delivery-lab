@@ -248,12 +248,13 @@ def main():
                 raise ValueError("synchronous replication not observed")
             old_primary = primary()
             started = time.monotonic()
-            kube("-n", NAMESPACE, "delete", "pod", old_primary, "--timeout=90s", timeout=100)
+            kube("-n", NAMESPACE, "delete", "pod", old_primary,
+                 "--grace-period=30", "--wait=false")
             changed = wait(lambda: primary() if primary() and primary() != old_primary else None, 180)
             wait(ready_instances, 240)
             record["primary_promotion"] = {"old": old_primary, "new": changed,
                                            "seconds": round(time.monotonic() - started, 3),
-                                           "fault": "controlled primary pod deletion"}
+                                           "fault": "primary pod deletion with 30-second grace"}
             for job in record["baseline_jobs"]:
                 if request("/v1/jobs/" + job + "/report") != EXPECTED:
                     raise ValueError("acknowledged report missing after promotion")

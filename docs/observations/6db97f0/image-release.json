@@ -1,0 +1,15 @@
+{
+  "source_revision": "6db97f0b0cac0739e79c2226710136d7bd346314",
+  "image": "ghcr.io/talisman36935/report-workshop@sha256:16cff712ababba385a365716b22c4c40bb5e4b367deb5ad29a0daa19f0708789",
+  "platform_manifests": {
+    "amd64": "sha256:156507db932d333127fbc950a496e167bb21763df25120e3662a8beb8ea9fc07",
+    "arm64": "sha256:8bf19c00c1fe8293a7a932a00e190cc21022005f92f0981567374490ff07e07d"
+  },
+  "build_attestation_manifests": [
+    "sha256:14b1a1706630e27849eb9384c3f22dd6526e59f8a9b1487fef0cbc8d1ee67287",
+    "sha256:f580afa62c9600f64bf334e363433d04235f1640908cfed0f27b377d2f29a671"
+  ],
+  "signature_verified": false,
+  "anonymous_pull_verified": false,
+  "runtime_qualification": "pending"
+}
