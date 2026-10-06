@@ -30,11 +30,15 @@ by the platform owner first, not by an application reconciler.
 
 Application delegation permits only ConfigMaps, Services, Deployments, Jobs and
 PDBs inside the one namespace. It does not permit Secrets, ServiceAccounts, RBAC,
-PVCs, namespaces or cluster resources. Cloud identity is platform-owned. AWS workers
-receive an explicit projected audience-scoped token, scoped role ARN and disabled
-EC2 metadata fallback; API/migration pods do not receive cloud credential settings.
-GCP identity annotation is checked against the selected project. Trust/IAM remains
-external, scoped and unqualified until cloud preflight.
+PVCs, namespaces or cluster resources. The renderer creates separate
+`report-api`, `report-worker` and `report-migrate` ServiceAccounts, with token
+automount disabled by default. Cloud identity is platform-owned: the GCP service
+account annotation is attached only to `report-worker`; AWS workers receive the
+explicit projected audience-scoped token, scoped role ARN and disabled EC2 metadata
+fallback. API and migration pods receive neither provider settings nor the worker's
+token volume. GCP identity annotation is checked against the selected project.
+Provider metadata behavior and IAM trust remain unqualified until cloud preflight;
+in particular, the node identity must not become an unintended fallback.
 
 Config Sync gives the app reconciler the migration Job and app objects together;
 read-only `schema-check` init containers block app start until the additive Job
@@ -63,6 +67,11 @@ must precede the source-root change.
 
 Unit tests prove disjoint identities, immutable release inputs, no legacy capability
 fallback, schema init gates, owner/backend matching and limited application RBAC.
+Focused renderer tests also require distinct API/worker/migration identities and
+reject cloud settings or the AWS token projection on API/migration pods. The AWS
+repository remains pinned to its previously qualified shared source/image until
+this renderer revision has its own exact-source GCP validation and HA qualification;
+its existing observation is not retroactively upgraded by these tests.
 Rendered manifests, IAM token projections and Flux readiness expressions are not
 live Config Sync or cloud authorization/admission evidence. The companion AWS repo's
 [hosted Flux app experiment](https://github.com/talisman36935/aws-kubernetes-reconciliation-lab/blob/main/docs/observations/d418d3f/qualification.md)

@@ -26,7 +26,8 @@ def render(*, image: str, revision: str, namespace: str = "report-dev",
         items.append(value)
         return value
 
-    obj("v1", "ServiceAccount", "report-workshop")["automountServiceAccountToken"] = False
+    for role in ("api", "worker", "migrate"):
+        obj("v1", "ServiceAccount", "report-" + role)["automountServiceAccountToken"] = False
     for role in ("api", "worker"):
         labels = {"app.kubernetes.io/name": "report-workshop",
                   "app.kubernetes.io/component": role}
@@ -61,7 +62,7 @@ def render(*, image: str, revision: str, namespace: str = "report-dev",
             "strategy": {"type": "RollingUpdate", "rollingUpdate": {
                 "maxSurge": 0, "maxUnavailable": 1}},
             "template": {"metadata": {"labels": labels}, "spec": {
-                "serviceAccountName": "report-workshop",
+                "serviceAccountName": "report-" + role,
                 "automountServiceAccountToken": False,
                 "terminationGracePeriodSeconds": 45,
                 "securityContext": {"runAsNonRoot": True, "runAsUser": 65532,
@@ -98,7 +99,7 @@ def render(*, image: str, revision: str, namespace: str = "report-dev",
         "template": {"metadata": {"labels": {
             "app.kubernetes.io/name": "report-workshop",
             "app.kubernetes.io/component": "migrate"}}, "spec": {
-            "restartPolicy": "Never", "serviceAccountName": "report-workshop",
+            "restartPolicy": "Never", "serviceAccountName": "report-migrate",
             "automountServiceAccountToken": False,
             "securityContext": {"runAsNonRoot": True, "runAsUser": 65532,
                                 "seccompProfile": {"type": "RuntimeDefault"}},

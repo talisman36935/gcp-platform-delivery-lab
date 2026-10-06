@@ -13,6 +13,11 @@ class ProfileTests(unittest.TestCase):
         items = render(image=IMAGE, revision=REVISION)["items"]
         deployments = [i for i in items if i["kind"] == "Deployment"]
         self.assertEqual(len(deployments), 2)
+        accounts = {i["metadata"]["name"]: i for i in items
+                    if i["kind"] == "ServiceAccount"}
+        self.assertEqual(set(accounts), {"report-api", "report-worker", "report-migrate"})
+        self.assertTrue(all(not account["automountServiceAccountToken"]
+                            for account in accounts.values()))
         for deployment in deployments:
             self.assertEqual(deployment["spec"]["replicas"], 3)
             pod = deployment["spec"]["template"]["spec"]
@@ -23,6 +28,8 @@ class ProfileTests(unittest.TestCase):
             self.assertIn("requiredDuringSchedulingIgnoredDuringExecution",
                           pod["affinity"]["podAntiAffinity"])
             self.assertEqual(pod["containers"][0]["image"], IMAGE)
+            role = deployment["metadata"]["name"].removeprefix("report-")
+            self.assertEqual(pod["serviceAccountName"], "report-" + role)
         for item in items:
             self.assertEqual(item["metadata"]["namespace"], "report-dev")
             self.assertNotIn(item["kind"], {"Secret", "Namespace", "ClusterRole"})
@@ -30,6 +37,9 @@ class ProfileTests(unittest.TestCase):
                 self.assertEqual(item["spec"]["minAvailable"], 2)
             if item["kind"] == "Service":
                 self.assertEqual(item["spec"]["type"], "ClusterIP")
+            if item["kind"] == "Job":
+                self.assertEqual(item["spec"]["template"]["spec"]["serviceAccountName"],
+                                 "report-migrate")
 
     def test_rejects_mutable_or_unscoped_inputs(self):
         for values in ({"image": "report:latest", "revision": REVISION},

@@ -101,3 +101,62 @@ class DeliveryTests(unittest.TestCase):
             render(release={**RELEASE, "capabilities": []}, owner="flux", storage_class="standard")
         with self.assertRaises(ValueError):
             render(release=RELEASE, owner="flux", backend="gcp", storage_class="standard")
+
+    def test_cloud_identity_is_assigned_only_to_worker(self):
+        cases = (
+            ("config-sync", "gcp", {
+                "GCP_PROJECT": "portfolio-lab",
+                "PUBSUB_TOPIC": "report-jobs",
+                "PUBSUB_SUBSCRIPTION": "report-jobs-sub",
+                "REPORT_BUCKET": "report-portfolio-bucket",
+                "GCP_SERVICE_ACCOUNT": "report-worker@portfolio-lab.iam.gserviceaccount.com",
+            }),
+            ("flux", "aws", {
+                "AWS_REGION": "eu-west-2",
+                "SQS_QUEUE_URL": "https://sqs.eu-west-2.amazonaws.com/123456789012/report-jobs",
+                "REPORT_BUCKET": "report-portfolio-bucket",
+                "AWS_ROLE_ARN": "arn:aws:iam::123456789012:role/report-worker",
+            }),
+        )
+        for owner, backend, settings in cases:
+            with self.subTest(backend=backend):
+                profile = render(release=RELEASE, owner=owner, storage_class="standard",
+                                 backend=backend, settings=settings)
+                accounts = {item["metadata"]["name"]: item for item in profile["platform"]
+                            if item["kind"] == "ServiceAccount"}
+                self.assertTrue({"report-api", "report-worker", "report-migrate"}
+                                <= set(accounts))
+                linked = [name for name, account in accounts.items()
+                          if "iam.gke.io/gcp-service-account" in
+                          account["metadata"].get("annotations", {})]
+                self.assertEqual(linked, ["report-worker"] if backend == "gcp" else [])
+
+                deployments = {item["metadata"]["name"]: item for item in profile["apps"]
+                               if item["kind"] == "Deployment"}
+                api_pod = deployments["report-api"]["spec"]["template"]["spec"]
+                worker_pod = deployments["report-worker"]["spec"]["template"]["spec"]
+                migrate = profile["migrations"][0]["spec"]["template"]["spec"]
+                self.assertEqual(api_pod["serviceAccountName"], "report-api")
+                self.assertEqual(worker_pod["serviceAccountName"], "report-worker")
+                self.assertEqual(migrate["serviceAccountName"], "report-migrate")
+                for pod in (api_pod, migrate):
+                    self.assertFalse(pod["automountServiceAccountToken"])
+                    self.assertFalse(pod.get("volumes"))
+                    env_names = {entry["name"] for container in pod["containers"]
+                                 for entry in container.get("env", [])}
+                    self.assertFalse(env_names & (set(settings) - {"GCP_SERVICE_ACCOUNT"}))
+                    self.assertFalse(env_names & {"AWS_WEB_IDENTITY_TOKEN_FILE"})
+                worker_env = {entry["name"]: entry.get("value")
+                              for entry in worker_pod["containers"][0]["env"]}
+                if backend == "gcp":
+                    self.assertEqual(accounts["report-worker"]["metadata"]["annotations"][
+                        "iam.gke.io/gcp-service-account"], settings["GCP_SERVICE_ACCOUNT"])
+                    self.assertEqual(worker_env["GCP_PROJECT"], settings["GCP_PROJECT"])
+                    self.assertNotIn("GCP_PROJECT", {entry["name"]
+                                     for entry in api_pod["containers"][0]["env"]})
+                else:
+                    self.assertEqual(worker_env["AWS_ROLE_ARN"], settings["AWS_ROLE_ARN"])
+                    self.assertEqual(worker_pod["volumes"][0]["projected"]["sources"][0]
+                                     ["serviceAccountToken"]["audience"], "sts.amazonaws.com")
+                expected_worker_settings = set(settings) - {"GCP_SERVICE_ACCOUNT"}
+                self.assertTrue(expected_worker_settings <= set(worker_env))

@@ -25,7 +25,8 @@ def render(*, release: dict, owner: str, namespace: str = "report-dev",
     settings = settings or {}
     profile = application(image=release["image"], revision=release["source_revision"],
                           namespace=namespace)
-    account = next(i for i in profile["items"] if i["kind"] == "ServiceAccount")
+    accounts = {i["metadata"]["name"]: i for i in profile["items"]
+                if i["kind"] == "ServiceAccount"}
     if backend == "gcp":
         required = {"GCP_PROJECT", "PUBSUB_TOPIC", "PUBSUB_SUBSCRIPTION", "REPORT_BUCKET", "GCP_SERVICE_ACCOUNT"}
     elif backend == "aws":
@@ -53,7 +54,8 @@ def render(*, release: dict, owner: str, namespace: str = "report-dev",
         if not re.fullmatch(r"report-[a-z0-9-]+@" + re.escape(settings["GCP_PROJECT"]) +
                             r"\.iam\.gserviceaccount\.com", settings["GCP_SERVICE_ACCOUNT"]):
             raise ValueError("invalid workload identity")
-        account["metadata"]["annotations"]["iam.gke.io/gcp-service-account"] = settings["GCP_SERVICE_ACCOUNT"]
+        accounts["report-worker"]["metadata"]["annotations"][
+            "iam.gke.io/gcp-service-account"] = settings["GCP_SERVICE_ACCOUNT"]
     if backend != "local" and not re.fullmatch(r"report-[a-z0-9-]{3,55}", settings["REPORT_BUCKET"]):
         raise ValueError("invalid report bucket")
     for obj in profile["items"]:
@@ -97,7 +99,8 @@ def render(*, release: dict, owner: str, namespace: str = "report-dev",
              "ports": [{"protocol": "UDP", "port": 53}, {"protocol": "TCP", "port": 53}]}]})
     # CNPG peer/control-plane policies require the qualified provider CNI/API
     # destinations. Leave these denied instead of emitting broad Internet access.
-    resources += [deepcopy(account), database(image=DB_IMAGE, storage_class=storage_class, namespace=namespace)]
+    resources += [deepcopy(account) for account in accounts.values()]
+    resources.append(database(image=DB_IMAGE, storage_class=storage_class, namespace=namespace))
     role = resource("rbac.authorization.k8s.io/v1", "Role", "report-workload-writer")
     role["rules"] = [
         {"apiGroups": [""], "resources": ["configmaps", "services"], "verbs": ["get", "list", "watch", "create", "update", "patch", "delete"]},

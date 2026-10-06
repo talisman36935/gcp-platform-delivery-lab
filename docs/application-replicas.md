@@ -34,8 +34,11 @@ queue redelivery or PostgreSQL primary failover qualification.
 
 ## Dormant Kubernetes profile
 
-The independent renderer produces namespaced ServiceAccount, API/worker Deployments,
-ClusterIP services, PDBs and a revision-named migration Job. It is not connected to
+The independent renderer produces separate namespaced `report-api`,
+`report-worker` and `report-migrate` ServiceAccounts, API/worker Deployments,
+ClusterIP services, PDBs and a revision-named migration Job. Service-account token
+automount is disabled by default; provider identity is attached only to the worker
+in an opt-in backend profile. It is not connected to
 the active RepoSync/Flux source and cannot deploy merely because CI renders it.
 
 ```sh
