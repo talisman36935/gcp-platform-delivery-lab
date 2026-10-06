@@ -164,6 +164,16 @@ def main():
             if group == "platform":
                 spec["healthCheckExprs"] = [{"apiVersion": "postgresql.cnpg.io/v1", "kind": "Cluster",
                     "current": "has(status.readyInstances) && status.readyInstances == spec.instances"}]
+            if group == "apps":
+                spec["healthCheckExprs"] = [{
+                    "apiVersion": "apps/v1", "kind": "Deployment",
+                    "current": "has(status.observedGeneration) && has(status.updatedReplicas) "
+                               "&& has(status.readyReplicas) && has(status.availableReplicas) "
+                               "&& status.observedGeneration == metadata.generation "
+                               "&& status.updatedReplicas == spec.replicas "
+                               "&& status.readyReplicas == spec.replicas "
+                               "&& status.availableReplicas == spec.replicas",
+                }]
             name = "report-" + group
             graph.append({"apiVersion": "kustomize.toolkit.fluxcd.io/v1", "kind": "Kustomization",
                           "metadata": {"name": name, "namespace": "flux-system"}, "spec": spec})

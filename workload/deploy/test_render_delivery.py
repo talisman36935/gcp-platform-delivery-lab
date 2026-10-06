@@ -1,7 +1,8 @@
 """Check exclusive ownership, migration gates and namespace-limited delegation."""
 
-import unittest
 import json
+import unittest
+from copy import deepcopy
 from pathlib import Path
 import tempfile
 from unittest.mock import patch
@@ -9,9 +10,30 @@ from render_delivery import main, render
 
 RELEASE = {"source_revision": "a" * 40, "image": "ghcr.io/example/report@sha256:" + "b" * 64,
            "capabilities": ["schema-check", "cloud-queue-object-v1"]}
+ROLLOUT_HEALTH = [{
+    "apiVersion": "apps/v1",
+    "kind": "Deployment",
+    "current": "has(status.observedGeneration) && has(status.updatedReplicas) "
+               "&& has(status.readyReplicas) && has(status.availableReplicas) "
+               "&& status.observedGeneration == metadata.generation "
+               "&& status.updatedReplicas == spec.replicas "
+               "&& status.readyReplicas == spec.replicas "
+               "&& status.availableReplicas == spec.replicas",
+}]
 
 
 class DeliveryTests(unittest.TestCase):
+    def render_flux_graph(self):
+        with tempfile.TemporaryDirectory() as scratch:
+            root = Path(scratch)
+            release = root / "release.json"
+            release.write_text(json.dumps(RELEASE))
+            output = root / "profile"
+            with patch("sys.argv", ["render", "--release", str(release), "--owner", "flux",
+                                    "--storage-class", "standard", "--output", str(output)]):
+                main()
+            return json.loads((output / "root/resources.json").read_text())["items"]
+
     def test_generated_trees_have_one_migration_owner_and_flux_order(self):
         for owner in ("config-sync", "flux"):
             with tempfile.TemporaryDirectory() as scratch:
@@ -37,6 +59,25 @@ class DeliveryTests(unittest.TestCase):
                     self.assertEqual(graph[2]["spec"]["dependsOn"], [{"name": "report-migrations"}])
                     self.assertTrue(all(i["spec"]["wait"] for i in graph))
                     self.assertNotIn("has(status)", graph[0]["spec"]["healthCheckExprs"][0]["current"])
+                    self.assert_flux_app_health(graph)
+                else:
+                    self.assertFalse((output / "root").exists())
+
+    def assert_flux_app_health(self, graph):
+        apps = [item for item in graph if item["metadata"]["name"] == "report-apps"]
+        self.assertEqual(len(apps), 1)
+        self.assertEqual(apps[0]["spec"].get("healthCheckExprs"), ROLLOUT_HEALTH)
+
+    def test_flux_app_health_rejects_missing_or_weakened_checks(self):
+        graph = self.render_flux_graph()
+        missing = deepcopy(graph)
+        missing[2]["spec"].pop("healthCheckExprs")
+        weakened = deepcopy(graph)
+        weakened[2]["spec"]["healthCheckExprs"][0]["current"] = "true"
+        for invalid in (missing, weakened):
+            with self.subTest(expression=invalid[2]["spec"].get("healthCheckExprs")):
+                with self.assertRaises(AssertionError):
+                    self.assert_flux_app_health(invalid)
 
     def test_disjoint_owners_and_gate(self):
         for owner in ("config-sync", "flux"):

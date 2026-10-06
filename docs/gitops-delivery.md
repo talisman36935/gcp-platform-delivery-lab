@@ -40,12 +40,16 @@ Config Sync gives the app reconciler the migration Job and app objects together;
 read-only `schema-check` init containers block app start until the additive Job
 migration finishes. Reconciliation order alone is not treated as a migration gate.
 Flux emits a root graph with `platform -> migrations -> apps`, `wait: true`, bounded
-timeouts and explicit DB ready-instance health expression. Migration/app reconcilers
-use the delegated namespace identity; platform reconciliation requires separately
-authorized bootstrap ownership. There is no application cluster-admin grant.
-The health expression guards `status.readyInstances`, not top-level `has(status)`;
-Flux/CEL cannot use that macro on a top-level property. A resource without status
-remains unready until the controller writes it, bounded by the reconciliation timeout.
+timeouts, an explicit DB ready-instance health expression and Deployment rollout
+health for the app root. The Deployment expression requires the current observed
+generation and all desired replicas updated, ready and available. This avoids Flux's
+default Deployment reader needing ReplicaSet/Pod reads, so the delegated Role stays
+narrow. Migration/app reconcilers use the delegated namespace identity; platform
+reconciliation requires separately authorized bootstrap ownership. There is no
+application cluster-admin grant. The DB expression guards `status.readyInstances`,
+not top-level `has(status)`; Flux/CEL cannot use that macro on a top-level property.
+A resource without status remains unready until the controller writes it, bounded by
+the reconciliation timeout.
 See the [Flux health-check contract](https://fluxcd.io/flux/components/kustomize/kustomizations/#health-check-expressions).
 
 ## Fail-closed activation boundaries
@@ -66,12 +70,12 @@ now passed baseline/config promotion/rollback/drift repair, twelve golden jobs,
 actual delegated-controller denial, local network allow/deny probes and cleanup in
 [37444041498](https://github.com/talisman36935/aws-kubernetes-reconciliation-lab/actions/runs/37444041498).
 It derives the local fixture from this pinned shared renderer, adds an explicit
-operator/DB/DNS/local API overlay and uses Deployment CEL requiring current
-generation plus all replicas updated/ready/available. The default Flux health reader
-recursively reads ReplicaSets/Pods, which the minimal Role excludes; adopt an
-equivalent reviewed health contract or scoped health reads before cloud activation.
-This local root extension is not emitted by the current generic renderer. Default
-cloud roots remain unchanged/blocked. Config Sync runtime remains unqualified.
+operator/DB/DNS/local API overlay and uses the same Deployment CEL health contract.
+The generic Flux renderer now emits that contract; its unit tests require the exact
+expression and reject missing or weakened checks. The hosted fixture independently
+qualifies it with the narrow Role. Default cloud roots remain unchanged/blocked, and
+the generated profile still needs provider identity/network/storage qualification.
+Config Sync runtime remains unqualified.
 
 Ordinary rollback reverts the app digest/config; it does not reverse additive DB
 migrations. Do not let RootSync and Flux or Cloud Deploy own the same identities.
