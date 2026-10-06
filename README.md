@@ -54,7 +54,7 @@ Do not use this command against another Compose project.
 | Workload | API, PostgreSQL outbox, fenced worker, Pub/Sub/GCS and SQS/S3 adapters, immutable report objects | Live cloud delivery, orphan sweep and object export |
 | Tests | Golden output, idempotency, fenced recovery, SDK protocol doubles, real PostgreSQL, native ARM smoke, hosted Kubernetes promotion and primary-worker loss | Live cloud queue/IAM contracts, physical cloud-zone/CSI failure |
 | GCP | Terraform lab foundation plus private-state/federated-CI bootstrap | Actual plan/apply, identity qualification and cloud teardown |
-| GitOps | Root ownership, restricted delegation, opt-in disjoint workload profiles and migration gates | App reconciliation, delegated negative test, promotion/rollback; provider networking and identity |
+| GitOps | Root ownership, restricted delegation, migration gates; companion hosted Flux app promotion/rollback/drift/denial test | Config Sync/cloud runtime, binary/schema rollback, provider networking/identity and lifecycle |
 | Observability | Structured logs, metrics/Prometheus, optional OTel collector/Tempo and CPU/heap capture | Continuous profiles, log backend and investigation dashboards |
 | Portfolio | Strict local baseline records, missing-collector gate, historical investigation evidence | Qualified durable cloud bundles and website ingestion |
 

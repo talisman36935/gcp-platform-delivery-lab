@@ -19,6 +19,14 @@ separately in [image qualification](image-and-ha-qualification.md).
 Independent teardown/TTL, approved cost protection, live cloud HA, full telemetry
 and durable portfolio ingestion remain incomplete. No cloud resources were created.
 
+The companion's hosted Flux experiment now qualifies actual application delivery,
+configuration promotion/rollback/drift repair, controller denial and one local
+network allow/deny path with twelve phase-local golden jobs and cleanup.
+See [delivery verification and cloud boundaries](gitops-delivery.md). It uses
+explicit local networking/rollout-health extensions; neither generic cloud root
+nor Config Sync runtime is thereby activated or qualified. Binary/schema rollback
+and signed durable portfolio evidence remain separate gates.
+
 ## ADR 001: two repositories, one application source
 
 The initial build stays within the two requested public repositories. This repo's

@@ -60,9 +60,18 @@ must precede the source-root change.
 Unit tests prove disjoint identities, immutable release inputs, no legacy capability
 fallback, schema init gates, owner/backend matching and limited application RBAC.
 Rendered manifests, IAM token projections and Flux readiness expressions are not
-live Config Sync/Flux authorization/admission evidence. Existing hosted Flux contract
-drift/cleanup remains the only current reconciliation runtime proof. A hosted app
-delivery/rollback/negative-permission experiment is the next credential-free gate.
+live Config Sync or cloud authorization/admission evidence. The companion AWS repo's
+[hosted Flux app experiment](https://github.com/talisman36935/aws-kubernetes-reconciliation-lab/blob/main/docs/observations/d418d3f/qualification.md)
+now passed baseline/config promotion/rollback/drift repair, twelve golden jobs,
+actual delegated-controller denial, local network allow/deny probes and cleanup in
+[37444041498](https://github.com/talisman36935/aws-kubernetes-reconciliation-lab/actions/runs/37444041498).
+It derives the local fixture from this pinned shared renderer, adds an explicit
+operator/DB/DNS/local API overlay and uses Deployment CEL requiring current
+generation plus all replicas updated/ready/available. The default Flux health reader
+recursively reads ReplicaSets/Pods, which the minimal Role excludes; adopt an
+equivalent reviewed health contract or scoped health reads before cloud activation.
+This local root extension is not emitted by the current generic renderer. Default
+cloud roots remain unchanged/blocked. Config Sync runtime remains unqualified.
 
 Ordinary rollback reverts the app digest/config; it does not reverse additive DB
 migrations. Do not let RootSync and Flux or Cloud Deploy own the same identities.
