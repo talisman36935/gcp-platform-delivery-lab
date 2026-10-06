@@ -36,6 +36,7 @@ class DeliveryTests(unittest.TestCase):
                     self.assertEqual(graph[1]["spec"]["dependsOn"], [{"name": "report-platform"}])
                     self.assertEqual(graph[2]["spec"]["dependsOn"], [{"name": "report-migrations"}])
                     self.assertTrue(all(i["spec"]["wait"] for i in graph))
+                    self.assertNotIn("has(status)", graph[0]["spec"]["healthCheckExprs"][0]["current"])
 
     def test_disjoint_owners_and_gate(self):
         for owner in ("config-sync", "flux"):

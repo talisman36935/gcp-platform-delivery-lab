@@ -43,6 +43,10 @@ Flux emits a root graph with `platform -> migrations -> apps`, `wait: true`, bou
 timeouts and explicit DB ready-instance health expression. Migration/app reconcilers
 use the delegated namespace identity; platform reconciliation requires separately
 authorized bootstrap ownership. There is no application cluster-admin grant.
+The health expression guards `status.readyInstances`, not top-level `has(status)`;
+Flux/CEL cannot use that macro on a top-level property. A resource without status
+remains unready until the controller writes it, bounded by the reconciliation timeout.
+See the [Flux health-check contract](https://fluxcd.io/flux/components/kustomize/kustomizations/#health-check-expressions).
 
 ## Fail-closed activation boundaries
 

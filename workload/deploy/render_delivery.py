@@ -163,7 +163,7 @@ def main():
                 spec["serviceAccountName"] = "report-reconciler"
             if group == "platform":
                 spec["healthCheckExprs"] = [{"apiVersion": "postgresql.cnpg.io/v1", "kind": "Cluster",
-                    "current": "has(status) && has(status.readyInstances) && status.readyInstances == spec.instances"}]
+                    "current": "has(status.readyInstances) && status.readyInstances == spec.instances"}]
             name = "report-" + group
             graph.append({"apiVersion": "kustomize.toolkit.fluxcd.io/v1", "kind": "Kustomization",
                           "metadata": {"name": name, "namespace": "flux-system"}, "spec": spec})
