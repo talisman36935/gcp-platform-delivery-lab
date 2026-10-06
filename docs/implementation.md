@@ -102,7 +102,11 @@ Compiled baseline/regressed worker variants now provide a local comparison with
 unchanged output, declared thresholds, per-phase profiles and original-image
 recovery. The hosted experiment is the qualification gate for that comparison.
 
-Next: finish full artifact contracts and backend log/continuous profile integration;
-qualify profiling overhead and process-kill recovery; implement cloud
-adapters; then qualify a bounded GCP create/run/destroy cycle. The original
-M0/M1 milestones are partial; M2–M6 remain outstanding.
+Next: finish full artifact contracts, backend log/continuous profile integration
+and trace-to-profile correlation; qualify profiling overhead and durable portfolio
+evidence ingestion. Then, after account-scoped identity, hard budget controls,
+alerts, lifetime and independent teardown are explicitly approved, qualify a
+bounded London cloud create/run/destroy cycle. Live Pub/Sub/GCS and SQS/S3 service
+behavior, GCP Config Sync runtime, AWS EKS/CAPA/ACK, physical-zone, storage, IAM
+and cloud telemetry behavior, budget enforcement and independent teardown remain
+unqualified. Local hosted evidence does not remove those activation gates.
