@@ -319,6 +319,8 @@ def main():
                                     else type(exc).__name__)
             record["failed_stage"] = stage
             print("Failed stage: " + stage, flush=True)
+            if isinstance(exc, TimeoutError):
+                print("Qualification timeout: " + str(exc), flush=True)
             # Bootstrap diagnostics precede any application/registry secrets.
             if stage in {"create-cluster", "create-namespace"} and isinstance(
                     exc, subprocess.CalledProcessError):
@@ -329,6 +331,24 @@ def main():
                     print(kube("-n", NAMESPACE, "get", kind))
                 except Exception:
                     pass
+            try:
+                cluster = get("clusters.postgresql.cnpg.io", "report-db")
+                record["database_status"] = cluster.get("status", {})
+            except Exception:
+                pass
+            try:
+                pods = kube("-n", NAMESPACE, "get", "pods", "-o", "json")
+                record["pod_status"] = [
+                    {"name": pod.get("metadata", {}).get("name"),
+                     "node": pod.get("spec", {}).get("nodeName"),
+                     "phase": pod.get("status", {}).get("phase"),
+                     "conditions": [{"type": condition.get("type"),
+                                     "status": condition.get("status"),
+                                     "reason": condition.get("reason")}
+                                    for condition in pod.get("status", {}).get("conditions", [])]}
+                    for pod in json.loads(pods).get("items", [])]
+            except Exception:
+                pass
         finally:
             stop_forward(forward)
             if stopped_node:
