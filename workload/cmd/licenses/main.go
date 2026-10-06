@@ -44,6 +44,14 @@ func collect() error {
 		return err
 	}
 	command := exec.Command("go", "list", "-deps", "-json", "./cmd/workshop")
+	command.Env = append(os.Environ(), "CGO_ENABLED=0")
+	// Execute this helper natively, but inspect dependencies for the target image.
+	if target := os.Getenv("TARGETOS"); target != "" {
+		command.Env = append(command.Env, "GOOS="+target)
+	}
+	if target := os.Getenv("TARGETARCH"); target != "" {
+		command.Env = append(command.Env, "GOARCH="+target)
+	}
 	stdout, err := command.StdoutPipe()
 	if err != nil {
 		return err
@@ -52,6 +60,13 @@ func collect() error {
 	if err = command.Start(); err != nil {
 		return err
 	}
+	defer func() {
+		_ = stdout.Close()
+		if command.ProcessState == nil {
+			_ = command.Process.Kill()
+			_ = command.Wait()
+		}
+	}()
 	decoder := json.NewDecoder(stdout)
 	seen := map[string]bool{}
 	records := []record{}
