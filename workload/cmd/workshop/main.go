@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/talisman36935/gcp-platform-delivery-lab/workload/internal/application"
+	"github.com/talisman36935/gcp-platform-delivery-lab/workload/internal/cloudaws"
+	"github.com/talisman36935/gcp-platform-delivery-lab/workload/internal/cloudgcp"
 	"github.com/talisman36935/gcp-platform-delivery-lab/workload/internal/domain"
 	"github.com/talisman36935/gcp-platform-delivery-lab/workload/internal/httpapi"
 	"github.com/talisman36935/gcp-platform-delivery-lab/workload/internal/postgres"
@@ -32,13 +34,13 @@ func main() {
 
 func run(ctx context.Context) error {
 	if len(os.Args) != 2 {
-		return errors.New("expected migrate, api or worker")
+		return errors.New("expected migrate, schema-check, api or worker")
 	}
 	mode := os.Args[1]
 	if analysisVariant != "baseline" && analysisVariant != "regressed" {
 		return errors.New("invalid compiled analysis variant")
 	}
-	if mode != "migrate" && mode != "api" && mode != "worker" {
+	if mode != "migrate" && mode != "schema-check" && mode != "api" && mode != "worker" {
 		return errors.New("invalid mode")
 	}
 	url := os.Getenv("DATABASE_URL")
@@ -55,6 +57,9 @@ func run(ctx context.Context) error {
 	if mode == "migrate" {
 		return s.Migrate(ctx)
 	}
+	if mode == "schema-check" {
+		return s.Ready(ctx)
+	}
 	metrics := telemetry.New(mode, revision)
 	metrics.SetVariant(analysisVariant)
 	traces, err := telemetry.NewTraces(ctx, mode, revision, os.Getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"))
@@ -68,6 +73,25 @@ func run(ctx context.Context) error {
 	}
 	defer stopMetrics()
 	if mode == "worker" {
+		var queue application.WorkQueue = s
+		switch os.Getenv("WORK_BACKEND") {
+		case "", "local":
+		case "gcp":
+			adapter, err := cloudgcp.New(ctx, os.Getenv("GCP_PROJECT"), os.Getenv("PUBSUB_TOPIC"), os.Getenv("PUBSUB_SUBSCRIPTION"), os.Getenv("REPORT_BUCKET"))
+			if err != nil {
+				return err
+			}
+			defer adapter.Close()
+			queue = &application.CloudQueue{State: s, Queue: adapter, Objects: adapter}
+		case "aws":
+			adapter, err := cloudaws.New(ctx, os.Getenv("AWS_REGION"), os.Getenv("SQS_QUEUE_URL"), os.Getenv("REPORT_BUCKET"))
+			if err != nil {
+				return err
+			}
+			queue = &application.CloudQueue{State: s, Queue: adapter, Objects: adapter}
+		default:
+			return errors.New("invalid WORK_BACKEND")
+		}
 		ticker := time.NewTicker(200 * time.Millisecond)
 		defer ticker.Stop()
 		for {
@@ -76,7 +100,7 @@ func run(ctx context.Context) error {
 				return nil
 			case <-ticker.C:
 				iteration, cancel := context.WithTimeout(ctx, 10*time.Second)
-				err := process(iteration, s, metrics, traces)
+				err := process(iteration, queue, metrics, traces)
 				cancel()
 				if err != nil {
 					slog.Warn("processing iteration failed", "category", "processing")
@@ -88,7 +112,7 @@ func run(ctx context.Context) error {
 	if addr == "" {
 		addr = "127.0.0.1:8080"
 	}
-	srv := &http.Server{Addr: addr, Handler: httpapi.Handler(traces.Repository(s), s.Pool.Ping, metrics.InstrumentHTTP, traces.InstrumentHTTP), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 10 * time.Second, IdleTimeout: 30 * time.Second}
+	srv := &http.Server{Addr: addr, Handler: httpapi.Handler(traces.Repository(s), s.Ready, metrics.InstrumentHTTP, traces.InstrumentHTTP), ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, WriteTimeout: 10 * time.Second, IdleTimeout: 30 * time.Second}
 	finished := make(chan struct{})
 	defer close(finished)
 	go func() {
@@ -108,7 +132,7 @@ func run(ctx context.Context) error {
 	return err
 }
 
-func process(ctx context.Context, s *postgres.Store, metrics *telemetry.Metrics, traces *telemetry.Traces) error {
+func process(ctx context.Context, s application.WorkQueue, metrics *telemetry.Metrics, traces *telemetry.Traces) error {
 	started := time.Now()
 	passes := 1
 	if analysisVariant == "regressed" {

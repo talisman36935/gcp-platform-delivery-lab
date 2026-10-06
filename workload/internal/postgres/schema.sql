@@ -18,6 +18,9 @@ CREATE TABLE IF NOT EXISTS outbox (
 );
 -- Additive local migration preserves job history from the initial quickstart.
 ALTER TABLE jobs ADD COLUMN IF NOT EXISTS trace_parent text NOT NULL DEFAULT '';
+ALTER TABLE jobs ADD COLUMN IF NOT EXISTS report_object jsonb;
+ALTER TABLE outbox ADD COLUMN IF NOT EXISTS lease_until timestamptz;
+ALTER TABLE outbox ADD COLUMN IF NOT EXISTS token integer NOT NULL DEFAULT 0;
 CREATE TABLE IF NOT EXISTS local_queue (
  job_id text PRIMARY KEY REFERENCES jobs(id),
  available_at timestamptz NOT NULL DEFAULT now()

@@ -65,6 +65,7 @@ Do not use this command against another Compose project.
 - [Current architecture and decisions](docs/implementation.md)
 - [Application replicas, crash recovery and dormant Kubernetes profile](docs/application-replicas.md)
 - [Image publishing and hosted database/node-failure qualification](docs/image-and-ha-qualification.md)
+- [Cloud queue/object adapters and crash contracts](docs/cloud-adapters.md)
 - [Validation and GCP activation boundary](docs/runbook.md)
 - [Private state and federated CI bootstrap](docs/cloud-bootstrap.md)
 - [Local metrics, evidence recorder and outage check](docs/local-observability.md)

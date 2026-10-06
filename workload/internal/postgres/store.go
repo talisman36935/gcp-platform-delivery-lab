@@ -53,11 +53,24 @@ func (s *Store) Migrate(ctx context.Context) error {
 	return tx.Commit(ctx)
 }
 
-const fields = "id,fixture,algorithm,state,attempt,created_at,completed_at,report,trace_parent"
+// Ready checks the additive schema without performing DDL from an app pod.
+func (s *Store) Ready(ctx context.Context) error {
+	var ready bool
+	err := s.Pool.QueryRow(ctx, `SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=current_schema() AND table_name='jobs' AND column_name='report_object') AND EXISTS(SELECT 1 FROM information_schema.columns WHERE table_schema=current_schema() AND table_name='outbox' AND column_name='token')`).Scan(&ready)
+	if err != nil {
+		return err
+	}
+	if !ready {
+		return errors.New("migration not ready")
+	}
+	return nil
+}
+
+const fields = "id,fixture,algorithm,state,attempt,created_at,completed_at,report,trace_parent,report_object"
 
 func scan(row pgx.Row) (Job, error) {
 	var j Job
-	err := row.Scan(&j.ID, &j.Fixture, &j.Algorithm, &j.State, &j.Attempt, &j.CreatedAt, &j.CompletedAt, &j.Report, &j.TraceParent)
+	err := row.Scan(&j.ID, &j.Fixture, &j.Algorithm, &j.State, &j.Attempt, &j.CreatedAt, &j.CompletedAt, &j.Report, &j.TraceParent, &j.Object)
 	return j, err
 }
 
@@ -120,6 +133,15 @@ func (s *Store) Dispatch(ctx context.Context) error {
 }
 
 func (s *Store) Claim(ctx context.Context, revision string, lease time.Duration) (Job, error) {
+	return s.claim(ctx, revision, lease, "")
+}
+
+// ClaimJob uses the same DB fencing as local delivery; queue receipts grant no ownership.
+func (s *Store) ClaimJob(ctx context.Context, id, revision string, lease time.Duration) (Job, error) {
+	return s.claim(ctx, revision, lease, id)
+}
+
+func (s *Store) claim(ctx context.Context, revision string, lease time.Duration, target string) (Job, error) {
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
 		return Job{}, err
@@ -130,9 +152,15 @@ func (s *Store) Claim(ctx context.Context, revision string, lease time.Duration)
 		return Job{}, err
 	}
 	var id string
-	err = tx.QueryRow(ctx, `SELECT j.id FROM jobs j JOIN local_queue q ON q.job_id=j.id
+	query := `SELECT j.id FROM jobs j JOIN local_queue q ON q.job_id=j.id
  WHERE q.available_at<=now() AND j.attempt<5 AND (j.state='pending' OR (j.state='running' AND j.lease_until<=now()))
- ORDER BY j.created_at FOR UPDATE OF j SKIP LOCKED LIMIT 1`).Scan(&id)
+ ORDER BY j.created_at FOR UPDATE OF j SKIP LOCKED LIMIT 1`
+	var arguments []any
+	if target != "" {
+		query = `SELECT id FROM jobs WHERE id=$1 AND attempt<5 AND (state='pending' OR (state='running' AND lease_until<=now())) FOR UPDATE SKIP LOCKED`
+		arguments = []any{target}
+	}
+	err = tx.QueryRow(ctx, query, arguments...).Scan(&id)
 	if errors.Is(err, pgx.ErrNoRows) {
 		if commitErr := tx.Commit(ctx); commitErr != nil {
 			return Job{}, commitErr
@@ -156,6 +184,22 @@ func (s *Store) Claim(ctx context.Context, revision string, lease time.Duration)
 }
 
 func (s *Store) Complete(ctx context.Context, j Job, report domain.Report) error {
+	return s.complete(ctx, j, report, nil)
+}
+
+func (s *Store) CompleteObject(ctx context.Context, j Job, report domain.Report, object domain.ReportObject) error {
+	data, err := json.Marshal(report)
+	if err != nil {
+		return err
+	}
+	hash := domain.Hash(data)
+	if (object.Provider != "gcs" && object.Provider != "s3") || object.Bucket == "" || object.SHA256 != hash || object.Key != fmt.Sprintf("reports/%s/attempt-%d/%s.json", j.ID, j.Attempt, hash) {
+		return errors.New("invalid immutable object reference")
+	}
+	return s.complete(ctx, j, report, &object)
+}
+
+func (s *Store) complete(ctx context.Context, j Job, report domain.Report, object *domain.ReportObject) error {
 	data, err := json.Marshal(report)
 	if err != nil {
 		return err
@@ -165,7 +209,7 @@ func (s *Store) Complete(ctx context.Context, j Job, report domain.Report) error
 		return err
 	}
 	defer tx.Rollback(ctx)
-	tag, err := tx.Exec(ctx, `UPDATE jobs SET state='succeeded',report=$3,completed_at=now(),lease_until=NULL WHERE id=$1 AND attempt=$2 AND state='running' AND lease_until>now()`, j.ID, j.Attempt, data)
+	tag, err := tx.Exec(ctx, `UPDATE jobs SET state='succeeded',report=$3,report_object=$4,completed_at=now(),lease_until=NULL WHERE id=$1 AND attempt=$2 AND state='running' AND lease_until>now()`, j.ID, j.Attempt, data, object)
 	if err != nil {
 		return err
 	}
@@ -179,4 +223,28 @@ func (s *Store) Complete(ctx context.Context, j Job, report domain.Report) error
 		return err
 	}
 	return tx.Commit(ctx)
+}
+
+// ClaimPublication commits a short lease before any cloud network operation.
+func (s *Store) ClaimPublication(ctx context.Context) (string, int, error) {
+	var id string
+	var token int
+	err := s.Pool.QueryRow(ctx, `UPDATE outbox SET lease_until=now()+interval '30 seconds',token=token+1
+ WHERE job_id=(SELECT job_id FROM outbox WHERE published_at IS NULL AND (lease_until IS NULL OR lease_until<=now())
+ ORDER BY job_id FOR UPDATE SKIP LOCKED LIMIT 1) RETURNING job_id,token`).Scan(&id, &token)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", 0, domain.ErrNotFound
+	}
+	return id, token, err
+}
+
+func (s *Store) MarkPublished(ctx context.Context, id string, token int) error {
+	tag, err := s.Pool.Exec(ctx, `UPDATE outbox SET published_at=now(),lease_until=NULL WHERE job_id=$1 AND token=$2 AND published_at IS NULL AND lease_until>now()`, id, token)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() != 1 {
+		return domain.ErrStale
+	}
+	return nil
 }

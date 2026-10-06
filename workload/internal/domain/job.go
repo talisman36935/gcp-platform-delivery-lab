@@ -22,4 +22,13 @@ type Job struct {
 	CreatedAt   time.Time       `json:"created_at"`
 	CompletedAt *time.Time      `json:"completed_at"`
 	Report      json.RawMessage `json:"-"`
+	Object      *ReportObject   `json:"-"`
+}
+
+// ReportObject is the selected immutable result, never a credential or signed URL.
+type ReportObject struct {
+	Provider string `json:"provider"`
+	Bucket   string `json:"bucket"`
+	Key      string `json:"key"`
+	SHA256   string `json:"sha256"`
 }

@@ -45,6 +45,15 @@ func ProcessOneWithAnalyzer(ctx context.Context, queue WorkQueue, revision strin
 	if err != nil {
 		return nil, err
 	}
+	defer func() {
+		if err != nil {
+			if abandoner, ok := queue.(interface {
+				Abandon(context.Context, domain.Job) error
+			}); ok {
+				_ = abandoner.Abandon(ctx, job)
+			}
+		}
+	}()
 	var observer AttemptObserver
 	if len(observers) > 0 {
 		observer = observers[0]
