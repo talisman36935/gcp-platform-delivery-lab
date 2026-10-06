@@ -55,7 +55,7 @@ def apply(obj):
     kube("apply", "-f", "-", data=json.dumps(obj))
 
 
-def wait(check, seconds):
+def wait(check, seconds, description="bounded qualification condition"):
     deadline = time.monotonic() + seconds
     while time.monotonic() < deadline:
         try:
@@ -65,7 +65,7 @@ def wait(check, seconds):
         except (OSError, subprocess.CalledProcessError):
             pass
         time.sleep(2)
-    raise TimeoutError("bounded qualification condition not observed")
+    raise TimeoutError("timeout waiting for " + description)
 
 
 def ready_instances():
@@ -289,9 +289,11 @@ def main():
             run("docker", "stop", "--time", "0", stopped_node)
             if run("docker", "inspect", "--format", "{{.State.Running}}", stopped_node) != "false":
                 raise ValueError("worker did not stop")
-            changed = wait(lambda: primary() if primary() and primary() != old_primary else None, 240)
+            changed = wait(lambda: primary() if primary() and primary() != old_primary else None,
+                           240, "PostgreSQL primary promotion after simulated node loss")
             wait(lambda: len(ready_pods("api", stopped_node)) >= 2
-                 and len(ready_pods("worker", stopped_node)) >= 2, 120)
+                 and len(ready_pods("worker", stopped_node)) >= 2, 120,
+                 "two ready API and worker replicas on surviving nodes")
             forward = start_forward(stopped_node)
             sql("DROP TRIGGER ha_test_gate ON jobs; DROP FUNCTION ha_test_gate()")
             record["test_completion_gate_removed"] = True
@@ -313,7 +315,8 @@ def main():
             wait(lambda: len(ready_pods("api")) == 3 and len(ready_pods("worker")) == 3, 180)
             record["result"] = "passed"
         except Exception as exc:
-            record["errors"].append(type(exc).__name__)
+            record["errors"].append(str(exc) if isinstance(exc, TimeoutError)
+                                    else type(exc).__name__)
             record["failed_stage"] = stage
             print("Failed stage: " + stage, flush=True)
             # Bootstrap diagnostics precede any application/registry secrets.

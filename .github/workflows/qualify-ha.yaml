@@ -100,7 +100,7 @@ jobs:
           docker pull "$IMAGE"
           docker run --rm --network host -e DATABASE_URL=postgres://workshop:local-demo-only@127.0.0.1:5432/workshop?sslmode=disable "$IMAGE" migrate
           docker run -d --name workshop-arm-api --network host -e DATABASE_URL=postgres://workshop:local-demo-only@127.0.0.1:5432/workshop?sslmode=disable -e LISTEN_ADDR=127.0.0.1:18080 "$IMAGE" api
-          docker run -d --name workshop-arm-worker --network host -e DATABASE_URL=postgres://workshop:local-demo-only@127.0.0.1:5432/workshop?sslmode=disable "$IMAGE" worker
+          docker run -d --name workshop-arm-worker --network host -e DATABASE_URL=postgres://workshop:local-demo-only@127.0.0.1:5432/workshop?sslmode=disable -e METRICS_ADDR=127.0.0.1:19091 "$IMAGE" worker
           python3 workload/smoke.py
       - name: Cleanup ARM processes
         if: always()
