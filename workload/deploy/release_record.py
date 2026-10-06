@@ -29,6 +29,7 @@ def main():
     output = Path("output")
     output.mkdir(exist_ok=True)
     record = {"source_revision": args.revision, "image": args.image,
+              "capabilities": json.loads(Path(__file__).with_name("capabilities.json").read_text())["capabilities"],
               "platform_manifests": platforms, "build_attestation_manifests":
               [m["digest"] for m in attestations], "signature_verified": False,
               "anonymous_pull_verified": False, "runtime_qualification": "pending"}

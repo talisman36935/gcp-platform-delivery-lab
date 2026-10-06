@@ -6,7 +6,8 @@ import json
 import re
 
 
-def render(*, image: str, revision: str, namespace: str = "report-dev") -> dict:
+def render(*, image: str, revision: str, namespace: str = "report-dev",
+           migration_gate: bool = True) -> dict:
     if not re.fullmatch(r"[a-z0-9][a-z0-9./:_-]*@sha256:[0-9a-f]{64}", image):
         raise ValueError("image must be an immutable repository digest")
     if not re.fullmatch(r"[0-9a-f]{40}", revision):
@@ -55,7 +56,7 @@ def render(*, image: str, revision: str, namespace: str = "report-dev") -> dict:
                                      "failureThreshold": 30}
         container["livenessProbe"] = {**live, "periodSeconds": 10}
         container["readinessProbe"] = {**ready, "periodSeconds": 5}
-        obj("apps/v1", "Deployment", "report-" + role, {
+        deployment = obj("apps/v1", "Deployment", "report-" + role, {
             "replicas": 3, "selector": selector,
             "strategy": {"type": "RollingUpdate", "rollingUpdate": {
                 "maxSurge": 0, "maxUnavailable": 1}},
@@ -76,6 +77,14 @@ def render(*, image: str, revision: str, namespace: str = "report-dev") -> dict:
                 "containers": [container],
             }},
         })
+        if migration_gate:
+            gate = deepcopy(container)
+            gate["name"] = "schema-ready"
+            gate["args"] = ["schema-check"]
+            gate["env"] = [deepcopy(container["env"][0])]
+            for field in ("ports", "startupProbe", "livenessProbe", "readinessProbe"):
+                gate.pop(field, None)
+            deployment["spec"]["template"]["spec"]["initContainers"] = [gate]
         obj("policy/v1", "PodDisruptionBudget", "report-" + role,
             {"minAvailable": 2, "selector": selector})
         obj("v1", "Service", "report-" + role, {
@@ -86,7 +95,9 @@ def render(*, image: str, revision: str, namespace: str = "report-dev") -> dict:
         })
     obj("batch/v1", "Job", "report-migrate-" + revision[:12], {
         "backoffLimit": 2, "activeDeadlineSeconds": 120,
-        "template": {"spec": {
+        "template": {"metadata": {"labels": {
+            "app.kubernetes.io/name": "report-workshop",
+            "app.kubernetes.io/component": "migrate"}}, "spec": {
             "restartPolicy": "Never", "serviceAccountName": "report-workshop",
             "automountServiceAccountToken": False,
             "securityContext": {"runAsNonRoot": True, "runAsUser": 65532,

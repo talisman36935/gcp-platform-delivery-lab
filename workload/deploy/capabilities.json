@@ -1,0 +1,3 @@
+{
+  "capabilities": ["schema-check", "cloud-queue-object-v1"]
+}
