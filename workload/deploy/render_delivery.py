@@ -40,11 +40,22 @@ def render(*, release: dict, owner: str, namespace: str = "report-dev",
         if settings["AWS_REGION"] != "eu-west-2" or not re.fullmatch(
                 r"arn:aws:iam::[0-9]{12}:role/report-[a-zA-Z0-9-]{1,60}", settings["AWS_ROLE_ARN"]):
             raise ValueError("invalid London workload identity")
+        queue = re.fullmatch(r"https://sqs\.eu-west-2\.amazonaws\.com/([0-9]{12})/report-[a-z0-9-]{1,60}",
+                             settings["SQS_QUEUE_URL"])
+        if not queue or queue[1] != settings["AWS_ROLE_ARN"].split(":")[4]:
+            raise ValueError("queue/identity account mismatch")
     if backend == "gcp":
+        if not re.fullmatch(r"[a-z][a-z0-9-]{4,28}[a-z0-9]", settings["GCP_PROJECT"]):
+            raise ValueError("invalid GCP project")
+        for name in ("PUBSUB_TOPIC", "PUBSUB_SUBSCRIPTION"):
+            if not re.fullmatch(r"report-[a-z0-9-]{1,60}", settings[name]):
+                raise ValueError("invalid PubSub resource")
         if not re.fullmatch(r"report-[a-z0-9-]+@" + re.escape(settings["GCP_PROJECT"]) +
                             r"\.iam\.gserviceaccount\.com", settings["GCP_SERVICE_ACCOUNT"]):
             raise ValueError("invalid workload identity")
         account["metadata"]["annotations"]["iam.gke.io/gcp-service-account"] = settings["GCP_SERVICE_ACCOUNT"]
+    if backend != "local" and not re.fullmatch(r"report-[a-z0-9-]{3,55}", settings["REPORT_BUCKET"]):
+        raise ValueError("invalid report bucket")
     for obj in profile["items"]:
         if obj["kind"] != "Deployment" or obj["metadata"]["name"] != "report-worker":
             continue
@@ -128,7 +139,8 @@ def main():
                      backend=args.backend,
                      settings=json.loads(args.settings.read_text()) if args.settings else None)
     args.output.mkdir(parents=True)
-    for group in ("platform", "migrations", "apps"):
+    for group in (("platform", "apps") if args.owner == "config-sync" else
+                  ("platform", "migrations", "apps")):
         directory = args.output / group
         directory.mkdir()
         objects = profile[group]

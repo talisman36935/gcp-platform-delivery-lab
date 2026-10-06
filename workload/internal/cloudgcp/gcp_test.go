@@ -2,13 +2,17 @@ package cloudgcp
 
 import (
 	"context"
+	"encoding/base64"
+	"encoding/binary"
 	"encoding/json"
+	"hash/crc32"
 	"io"
 	"mime"
 	"mime/multipart"
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"sync"
 	"testing"
 	"time"
@@ -118,8 +122,10 @@ func TestGCPWireRequests(t *testing.T) {
 				return
 			}
 			stored, _ = io.ReadAll(data)
+			var checksum [4]byte
+			binary.BigEndian.PutUint32(checksum[:], crc32.Checksum(stored, crc32.MakeTable(crc32.Castagnoli)))
 			w.Header().Set("Content-Type", "application/json")
-			json.NewEncoder(w).Encode(map[string]any{"bucket": "report-test", "name": object["name"], "generation": "1", "size": "1"})
+			json.NewEncoder(w).Encode(map[string]any{"bucket": "report-test", "name": object["name"], "generation": "1", "size": strconv.Itoa(len(stored)), "crc32c": base64.StdEncoding.EncodeToString(checksum[:])})
 		case "GET":
 			w.Header().Set("Content-Type", "application/json")
 			_, _ = w.Write(stored)
