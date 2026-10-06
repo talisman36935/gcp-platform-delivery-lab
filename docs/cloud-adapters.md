@@ -31,6 +31,9 @@ an activation prerequisite, not a completed quarantine feature.
 SQS receipt visibility/PubSub ack deadline is sixty seconds at receive; retries use
 thirty seconds. Provider delivery limits and job attempt limits are independent.
 One worker processes one delivery at a time, with a ten-second iteration deadline.
+Cloud publication runs in an independent bounded dispatcher loop: a publish outage
+does not prevent consumption of already-delivered work. Shutdown cancels and joins
+that loop before closing provider clients or the DB pool.
 There is no live-resource provisioning, lease heartbeat, orphan sweeper or independent
 recovery scanner yet. Never purge a live queue: its published outbox rows will not
 automatically republish. Backend switching on a live backlog is not supported.

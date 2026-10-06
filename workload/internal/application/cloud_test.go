@@ -99,6 +99,17 @@ func fixtureCloud() (*CloudQueue, *testState, *testQueue, *testObjects) {
 
 func TestCloudCrashWindows(t *testing.T) {
 	ctx := context.Background()
+	t.Run("publisher outage does not block existing delivery", func(t *testing.T) {
+		q, s, n, o := fixtureCloud()
+		q.BackgroundDispatch = true
+		n.failPublish = true
+		if q.PublishPending(ctx) == nil {
+			t.Fatal("missing publish outage")
+		}
+		if _, err := ProcessOne(ctx, q, "source"); err != nil || s.job.State != "succeeded" || o.calls != 1 || n.delivery.acks != 1 {
+			t.Fatal("publisher outage blocked consumption", err)
+		}
+	})
 	t.Run("publish failure does not mark", func(t *testing.T) {
 		q, s, n, _ := fixtureCloud()
 		n.failPublish = true

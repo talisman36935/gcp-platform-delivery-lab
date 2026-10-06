@@ -92,6 +92,30 @@ func run(ctx context.Context) error {
 		default:
 			return errors.New("invalid WORK_BACKEND")
 		}
+		if cloud, ok := queue.(*application.CloudQueue); ok {
+			cloud.BackgroundDispatch = true
+			dispatchCtx, stopDispatch := context.WithCancel(ctx)
+			finished := make(chan struct{})
+			go func() {
+				defer close(finished)
+				ticker := time.NewTicker(200 * time.Millisecond)
+				defer ticker.Stop()
+				for {
+					select {
+					case <-dispatchCtx.Done():
+						return
+					case <-ticker.C:
+						iteration, cancel := context.WithTimeout(dispatchCtx, 10*time.Second)
+						err := cloud.PublishPending(iteration)
+						cancel()
+						if err != nil {
+							slog.Warn("dispatch iteration failed", "category", "dispatch")
+						}
+					}
+				}
+			}()
+			defer func() { stopDispatch(); <-finished }()
+		}
 		ticker := time.NewTicker(200 * time.Millisecond)
 		defer ticker.Stop()
 		for {

@@ -67,9 +67,18 @@ type CloudQueue struct {
 	Objects  Objects
 	mu       sync.Mutex
 	receipts map[string]receipt
+	// Set once before starting the independent dispatcher/consumer loops.
+	BackgroundDispatch bool
 }
 
 func (q *CloudQueue) Dispatch(ctx context.Context) error {
+	if q.BackgroundDispatch {
+		return nil
+	}
+	return q.PublishPending(ctx)
+}
+
+func (q *CloudQueue) PublishPending(ctx context.Context) error {
 	id, token, err := q.State.ClaimPublication(ctx)
 	if errors.Is(err, domain.ErrNotFound) {
 		return nil
