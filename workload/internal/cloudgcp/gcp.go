@@ -20,8 +20,8 @@ import (
 )
 
 type Adapter struct {
-	publisher                   *pubsub.PublisherClient
-	subscriber                  *pubsub.SubscriberClient
+	publisher                   *pubsub.TopicAdminClient
+	subscriber                  *pubsub.SubscriptionAdminClient
 	objects                     *storage.Client
 	topic, subscription, bucket string
 }
@@ -30,11 +30,11 @@ func New(ctx context.Context, project, topic, subscription, bucket string) (*Ada
 	if !regexp.MustCompile(`^[a-z][a-z0-9-]{4,28}[a-z0-9]$`).MatchString(project) || !regexp.MustCompile(`^report-[a-z0-9-]{3,55}$`).MatchString(bucket) || !regexp.MustCompile(`^report-[a-z0-9-]{1,60}$`).MatchString(topic) || !regexp.MustCompile(`^report-[a-z0-9-]{1,60}$`).MatchString(subscription) {
 		return nil, errors.New("invalid GCP resource configuration")
 	}
-	pub, err := pubsub.NewPublisherClient(ctx, option.WithEndpoint("europe-west2-pubsub.googleapis.com:443"))
+	pub, err := pubsub.NewTopicAdminClient(ctx, option.WithEndpoint("europe-west2-pubsub.googleapis.com:443"))
 	if err != nil {
 		return nil, err
 	}
-	sub, err := pubsub.NewSubscriberClient(ctx, option.WithEndpoint("europe-west2-pubsub.googleapis.com:443"))
+	sub, err := pubsub.NewSubscriptionAdminClient(ctx, option.WithEndpoint("europe-west2-pubsub.googleapis.com:443"))
 	if err != nil {
 		_ = pub.Close()
 		return nil, err

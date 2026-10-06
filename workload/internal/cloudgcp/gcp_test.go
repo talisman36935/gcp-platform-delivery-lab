@@ -79,11 +79,11 @@ func TestGCPWireRequests(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer connection.Close()
-	pub, err := pubsub.NewPublisherClient(ctx, option.WithGRPCConn(connection))
+	pub, err := pubsub.NewTopicAdminClient(ctx, option.WithGRPCConn(connection))
 	if err != nil {
 		t.Fatal(err)
 	}
-	sub, err := pubsub.NewSubscriberClient(ctx, option.WithGRPCConn(connection))
+	sub, err := pubsub.NewSubscriptionAdminClient(ctx, option.WithGRPCConn(connection))
 	if err != nil {
 		t.Fatal(err)
 	}
