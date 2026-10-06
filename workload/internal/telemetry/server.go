@@ -38,6 +38,17 @@ func (m *Metrics) Start(ctx context.Context, addr string, profiling ...bool) (fu
 func (m *Metrics) AdminHandler(profiling bool) http.Handler {
 	mux := http.NewServeMux()
 	mux.Handle("GET /metrics", m.Handler())
+	if m.role == "worker" {
+		mux.HandleFunc("GET /readyz", func(w http.ResponseWriter, _ *http.Request) {
+			w.Header().Set("Cache-Control", "no-store")
+			if !m.workerReadyAt(time.Now()) {
+				http.Error(w, "worker_not_ready", http.StatusServiceUnavailable)
+				return
+			}
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte("ready\n"))
+		})
+	}
 	if profiling {
 		mux.Handle("GET /debug/pprof/heap", pprof.Handler("heap"))
 		mux.HandleFunc("GET /debug/pprof/profile", func(w http.ResponseWriter, r *http.Request) {

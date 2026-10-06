@@ -7,6 +7,7 @@ from urllib.request import Request, urlopen
 import uuid
 
 BASE = "http://127.0.0.1:18080"
+WORKER_READY = "http://127.0.0.1:19091/readyz"
 
 
 def request(path, body=None, key=None):
@@ -17,6 +18,16 @@ def request(path, body=None, key=None):
     with urlopen(Request(BASE + path, data=data, headers=headers), timeout=5) as response:
         return response.status, json.load(response)
 
+
+for attempt in range(60):
+    try:
+        with urlopen(WORKER_READY, timeout=2) as response:
+            assert response.status == 200, response.status
+        break
+    except (URLError, TimeoutError):
+        time.sleep(1)
+else:
+    raise SystemExit("worker did not report a successful recent work cycle")
 
 for attempt in range(60):
     try:
@@ -55,4 +66,7 @@ assert report["tokens"] == 11, report
 assert report["unique_tokens"] == 6, report
 assert report["duplicate_documents"] == 1, report
 assert len(report["input_sha256"]) == 64, report
-print(json.dumps({"verification": "local-compose", "result": "passed", "report": report}))
+with urlopen(WORKER_READY, timeout=2) as response:
+    assert response.status == 200, response.status
+print(json.dumps({"verification": "local-compose", "result": "passed",
+                  "worker_ready": True, "report": report}))

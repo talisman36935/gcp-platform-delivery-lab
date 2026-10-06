@@ -52,7 +52,7 @@ def render(*, image: str, revision: str, namespace: str = "report-dev",
             ready = {"httpGet": {"path": "/readyz", "port": "http"}}
         else:
             live = {"tcpSocket": {"port": "metrics"}}
-            ready = deepcopy(live)
+            ready = {"httpGet": {"path": "/readyz", "port": "metrics"}}
         container["startupProbe"] = {**deepcopy(live), "periodSeconds": 2,
                                      "failureThreshold": 30}
         container["livenessProbe"] = {**live, "periodSeconds": 10}

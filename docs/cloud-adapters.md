@@ -38,6 +38,13 @@ There is no live-resource provisioning, lease heartbeat, orphan sweeper or indep
 recovery scanner yet. Never purge a live queue: its published outbox rows will not
 automatically republish. Backend switching on a live backlog is not supported.
 
+Worker readiness requires a successful receive/process/DB cycle within 30 seconds;
+cloud-backed workers also require a recent successful outbox-dispatch cycle. Empty
+queues count as healthy polls, while repeated adapter or DB failures stop refreshing
+the readiness window. Liveness remains a process-level TCP check. This avoids
+advertising a live metrics listener as a healthy polling worker, but does not measure
+queue age or throughput and is not live-provider outage qualification.
+
 ## Explicit existing-resource configuration
 
 | Worker backend | Required nonsecret settings |

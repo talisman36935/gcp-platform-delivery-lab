@@ -61,6 +61,8 @@ func run(ctx context.Context) error {
 		return s.Ready(ctx)
 	}
 	metrics := telemetry.New(mode, revision)
+	backend := os.Getenv("WORK_BACKEND")
+	metrics.RequireDispatchHealth(mode == "worker" && backend != "" && backend != "local")
 	metrics.SetVariant(analysisVariant)
 	traces, err := telemetry.NewTraces(ctx, mode, revision, os.Getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"))
 	if err != nil {
@@ -108,6 +110,7 @@ func run(ctx context.Context) error {
 						iteration, cancel := context.WithTimeout(dispatchCtx, 10*time.Second)
 						err := cloud.PublishPending(iteration)
 						cancel()
+						metrics.ObserveDispatch(err)
 						if err != nil {
 							slog.Warn("dispatch iteration failed", "category", "dispatch")
 						}

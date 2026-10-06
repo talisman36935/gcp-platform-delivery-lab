@@ -30,6 +30,14 @@ class ProfileTests(unittest.TestCase):
             self.assertEqual(pod["containers"][0]["image"], IMAGE)
             role = deployment["metadata"]["name"].removeprefix("report-")
             self.assertEqual(pod["serviceAccountName"], "report-" + role)
+            probes = pod["containers"][0]
+            if role == "worker":
+                self.assertEqual(probes["livenessProbe"]["tcpSocket"]["port"], "metrics")
+                self.assertEqual(probes["readinessProbe"]["httpGet"],
+                                 {"path": "/readyz", "port": "metrics"})
+            else:
+                self.assertEqual(probes["readinessProbe"]["httpGet"],
+                                 {"path": "/readyz", "port": "http"})
         for item in items:
             self.assertEqual(item["metadata"]["namespace"], "report-dev")
             self.assertNotIn(item["kind"], {"Secret", "Namespace", "ClusterRole"})

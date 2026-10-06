@@ -51,7 +51,13 @@ Mutable image tags, branch names and unrelated namespaces are rejected. Each rol
 has three replicas, hard same-role host anti-affinity, zone spread and a PDB with
 two available replicas. Rolling updates use zero surge and one unavailable replica.
 Runtime limits, read-only/non-root security and explicit probes are included.
-Worker readiness checks its listener, not cloud queue/database processing health.
+Worker readiness requires a successful queue/database work cycle within the last
+30 seconds. An idle, successful poll counts; processing or dependency errors do
+not refresh the window. Cloud-backed workers also require a recent successful
+outbox-dispatch cycle. The readiness endpoint returns only a fixed status, while
+liveness remains a TCP check so dependency outages remove a worker from service
+without inducing restart loops. This signals a recent healthy polling path, not
+queue age, processing capacity, per-job success or a live provider guarantee.
 PDBs constrain voluntary evictions, not arbitrary machine or zone loss.
 
 The platform owner must create the namespace and qualify the database operator.

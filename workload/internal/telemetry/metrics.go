@@ -4,6 +4,7 @@ package telemetry
 import (
 	"net/http"
 	"strconv"
+	"sync/atomic"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -12,19 +13,24 @@ import (
 )
 
 type Metrics struct {
-	registry   *prometheus.Registry
-	requests   *prometheus.CounterVec
-	duration   *prometheus.HistogramVec
-	iterations *prometheus.CounterVec
-	processing prometheus.Histogram
-	completed  prometheus.Counter
-	retried    prometheus.Counter
+	registry         *prometheus.Registry
+	role             string
+	iterationOK      atomic.Int64
+	dispatchOK       atomic.Int64
+	dispatchRequired atomic.Bool
+	requests         *prometheus.CounterVec
+	duration         *prometheus.HistogramVec
+	iterations       *prometheus.CounterVec
+	processing       prometheus.Histogram
+	completed        prometheus.Counter
+	retried          prometheus.Counter
 }
 
 func New(role, revision string) *Metrics {
 	registry := prometheus.NewRegistry()
 	m := &Metrics{
 		registry:   registry,
+		role:       role,
 		requests:   prometheus.NewCounterVec(prometheus.CounterOpts{Name: "workshop_http_requests_total", Help: "HTTP requests by bounded route, method and status."}, []string{"route", "method", "status"}),
 		duration:   prometheus.NewHistogramVec(prometheus.HistogramOpts{Name: "workshop_http_request_duration_seconds", Help: "HTTP handler duration.", Buckets: prometheus.DefBuckets}, []string{"route"}),
 		iterations: prometheus.NewCounterVec(prometheus.CounterOpts{Name: "workshop_worker_iterations_total", Help: "Worker polling iterations by completed, idle or error outcome."}, []string{"outcome"}),
@@ -105,5 +111,37 @@ func (m *Metrics) ObserveIteration(completed bool, attempt int, err error, elaps
 		}
 		m.processing.Observe(elapsed.Seconds())
 	}
+	if m.role == "worker" && err == nil {
+		m.iterationOK.Store(time.Now().UnixNano())
+	}
 	m.iterations.WithLabelValues(outcome).Inc()
+}
+
+// RequireDispatchHealth includes the independent cloud outbox publisher in readiness.
+func (m *Metrics) RequireDispatchHealth(required bool) {
+	m.dispatchRequired.Store(required)
+}
+
+// ObserveDispatch advances cloud-worker readiness only after an outbox poll succeeds.
+func (m *Metrics) ObserveDispatch(err error) {
+	if m.role == "worker" && err == nil {
+		m.dispatchOK.Store(time.Now().UnixNano())
+	}
+}
+
+const workerReadinessWindow = 30 * time.Second
+
+func (m *Metrics) workerReadyAt(now time.Time) bool {
+	if m.role != "worker" || !fresh(m.iterationOK.Load(), now) {
+		return false
+	}
+	return !m.dispatchRequired.Load() || fresh(m.dispatchOK.Load(), now)
+}
+
+func fresh(unixNano int64, now time.Time) bool {
+	if unixNano == 0 {
+		return false
+	}
+	age := now.Sub(time.Unix(0, unixNano))
+	return age >= 0 && age <= workerReadinessWindow
 }

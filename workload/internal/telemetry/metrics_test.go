@@ -46,3 +46,57 @@ func TestWorkerOutcomes(t *testing.T) {
 		}
 	}
 }
+
+func TestWorkerReadinessRequiresFreshHealthyCycles(t *testing.T) {
+	now := time.Now()
+	worker := New("worker", "test")
+	worker.RequireDispatchHealth(true)
+	if worker.workerReadyAt(now) {
+		t.Fatal("worker became ready before completing work or dispatch cycles")
+	}
+	worker.iterationOK.Store(now.UnixNano())
+	if worker.workerReadyAt(now) {
+		t.Fatal("cloud worker became ready before outbox dispatch succeeded")
+	}
+	worker.ObserveDispatch(errors.New("private dispatch failure"))
+	if worker.workerReadyAt(now) {
+		t.Fatal("failed dispatch marked worker ready")
+	}
+	worker.ObserveDispatch(nil)
+	healthyAt := time.Now()
+	if !worker.workerReadyAt(healthyAt) {
+		t.Fatal("fresh successful work and dispatch cycles did not mark ready")
+	}
+	worker.ObserveIteration(false, 0, errors.New("private poll failure"), time.Second)
+	if !worker.workerReadyAt(healthyAt.Add(workerReadinessWindow - time.Second)) {
+		t.Fatal("one failed poll erased a still-fresh success")
+	}
+	if worker.workerReadyAt(healthyAt.Add(workerReadinessWindow + time.Second)) {
+		t.Fatal("stale successful cycles remained ready")
+	}
+	api := New("api", "test")
+	api.ObserveIteration(false, 0, nil, time.Second)
+	if api.workerReadyAt(now) {
+		t.Fatal("API process used the worker readiness contract")
+	}
+}
+
+func TestLocalWorkerReadinessDoesNotRequireCloudDispatcher(t *testing.T) {
+	now := time.Now()
+	worker := New("worker", "test")
+	worker.iterationOK.Store(now.UnixNano())
+	if !worker.workerReadyAt(now) {
+		t.Fatal("successful local idle poll should be ready")
+	}
+}
+
+func TestCloudWorkerReadinessExpiresStalledDispatcher(t *testing.T) {
+	now := time.Now()
+	worker := New("worker", "test")
+	worker.RequireDispatchHealth(true)
+	worker.iterationOK.Store(now.UnixNano())
+	worker.dispatchOK.Store(now.Add(-workerReadinessWindow - time.Second).UnixNano())
+	if worker.workerReadyAt(now) {
+		t.Fatal("fresh consumer polls hid a stalled cloud outbox dispatcher")
+	}
+}
