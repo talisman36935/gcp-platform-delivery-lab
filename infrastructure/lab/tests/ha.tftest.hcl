@@ -14,8 +14,8 @@ run "regional_three_node_contract" {
     error_message = "Regional control plane and three worker zones required."
   }
   assert {
-    condition     = google_container_node_pool.lab.node_count == 1 && length(google_container_node_pool.lab.node_locations) == 3 && google_container_node_pool.lab.node_config[0].machine_type == "e2-standard-2"
-    error_message = "Use three total e2-standard-2 nodes, not nine."
+    condition     = google_container_node_pool.lab.node_count == 1 && length(google_container_node_pool.lab.node_locations) == 3 && google_container_node_pool.lab.node_config[0].machine_type == "e2-medium"
+    error_message = "Use three total minimum-candidate e2-medium nodes, not nine."
   }
 }
 

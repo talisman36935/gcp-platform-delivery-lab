@@ -104,9 +104,9 @@ recovery. The hosted experiment is the qualification gate for that comparison.
 
 Next: finish full artifact contracts, backend log/continuous profile integration
 and trace-to-profile correlation; qualify profiling overhead and durable portfolio
-evidence ingestion. Then, after account-scoped identity, hard budget controls,
-alerts, lifetime and independent teardown are explicitly approved, qualify a
-bounded London cloud create/run/destroy cycle. Live Pub/Sub/GCS and SQS/S3 service
+evidence ingestion. Then, after account-scoped identity, budget/alert delivery,
+lifetime, ephemeral state handling and independent teardown are qualified, perform
+a bounded London cloud create/run/destroy cycle. Live Pub/Sub/GCS and SQS/S3 service
 behavior, GCP Config Sync runtime, AWS EKS/CAPA/ACK, physical-zone, storage, IAM
 and cloud telemetry behavior, budget enforcement and independent teardown remain
 unqualified. Local hosted evidence does not remove those activation gates.

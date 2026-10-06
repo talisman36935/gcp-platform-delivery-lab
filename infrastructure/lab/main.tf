@@ -113,7 +113,7 @@ resource "google_container_node_pool" "lab" {
     max_unavailable = 1
   }
   node_config {
-    machine_type    = "e2-standard-2"
+    machine_type    = "e2-medium"
     disk_size_gb    = 30
     disk_type       = "pd-standard"
     service_account = google_service_account.nodes.email

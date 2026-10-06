@@ -49,11 +49,15 @@ handled as sensitive data. Never publish state, saved plans or credential caches
 Once cloud settings are approved and access is verified:
 
 1. Review the bootstrap plan under the operator identity.
-2. Create retained state/federation resources; record identifiers privately.
-3. Migrate bootstrap state and configure the lab backend with separate prefixes.
-4. Review the minimum project role set and the dedicated lifecycle workflow.
-5. Test token acceptance and rejection for allowed/forbidden workflow contexts.
-6. Only then plan the bounded lab create/run/export/delete cycle.
+2. Configure the approved private cost-alert recipient, enable the project budget,
+   and set its GBP amount to at most £5 with five actual and two forecast thresholds.
+   Budget/email inputs and Terraform state must stay private.
+3. Create the reviewed state/federation resources; record identifiers privately.
+4. Migrate bootstrap state and configure the lab backend with separate prefixes.
+5. Review the minimum project role set and the dedicated lifecycle workflow.
+6. Test budget notification delivery and token acceptance/rejection for allowed/
+   forbidden workflow contexts.
+7. Only then plan the bounded lab create/run/export/delete cycle.
 
 Provider validation does not prove claim evaluation, cloud permissions, bucket
 locking/recovery or the lifecycle. Those require actual qualification. No cloud

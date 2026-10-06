@@ -3,11 +3,12 @@
 ## Ephemeral HA cloud execution policy
 
 Follow the [ephemeral HA architecture and cost policy](architecture-cost.md)
-before activation. London multi-zone HA, low-cost viable nodes, full architecture,
-budget alerts and immediate audited cleanup are required. £2/run and one hour
-remain proposals, not approved or validated HA limits. Verified
-spending protection and bootstrap retention decisions remain activation gates.
-Existing topology/intent validators do not yet enforce this complete policy.
+before activation. London multi-zone HA, 4 GiB minimum-first nodes, layered
+provider-specific alerts, a £5 gross per-run planning ceiling, £10 total for the
+first GCP+AWS attempts, 60-minute maximum lifetime and immediate audited cleanup
+are the approved starting policy. These are not provider-guaranteed monetary caps;
+preflight cost coverage and alert delivery must pass before apply. Existing
+topology/intent validators do not yet enforce the complete policy.
 
 ## Credential-free checks
 
@@ -37,8 +38,10 @@ database intentionally has no published host port.
 This is not yet an executable end-to-end cloud runbook. Do not run apply merely
 because validate passes. Required outstanding gates:
 
-1. Confirm a dedicated project, billing scope, region/zone, operator egress CIDR,
-   per-run budget and maximum lifetime.
+1. Confirm the dedicated project, billing scope, region/zone, operator egress CIDR,
+   GBP billing currency, £5 per-run budget and 60-minute expiry.
+   Configure and test the GCP cost-alert email plus the 25/50/75/90/100% actual
+   and 75/100% forecast thresholds before provisioning.
 2. Activate and qualify the [separate state/federation bootstrap](cloud-bootstrap.md).
    Never commit state, plans, service-account keys or environment credentials.
 3. Qualify the selected GKE/Config Sync versions and fleet RBAC behavior.

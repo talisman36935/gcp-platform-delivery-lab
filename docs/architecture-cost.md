@@ -1,4 +1,4 @@
-# Ephemeral HA architecture and cost policy — 2026-10-05
+# Ephemeral HA architecture and cost policy — 2026-10-06
 
 This profile combines multi-zone availability with short-lived execution and
 cost-conscious node selection. Capacity, failover and cleanup are qualification
@@ -28,28 +28,34 @@ requirements, not inferred from a successful deployment.
 
 ## London instance comparison
 
-Snapshot checked 2026-10-05. Linux on-demand USD before tax/credits, excluding
+Snapshot checked 2026-10-06. Linux on-demand USD before tax/credits, excluding
 CPU-credit surcharges; no reserved/committed-use purchases for temporary labs.
 
 | Candidate | vCPU / RAM | Node/hour | Three nodes/hour |
 | --- | --- | ---: | ---: |
 | AWS t4g.small (ARM) | 2 / 2 GiB | $0.0188 | $0.0564 |
-| AWS t4g.medium (ARM) | 2 / 4 GiB | $0.0376 | $0.1128 |
-| AWS t3a.medium (x86) | 2 / 4 GiB | $0.0425 | $0.1275 |
+| AWS t4g.medium (Graviton ARM) | 2 / 4 GiB | $0.0376 | $0.1128 |
+| AWS t3a.medium (x86 fallback) | 2 / 4 GiB | $0.0425 | $0.1275 |
 | AWS t4g.large (ARM) | 2 / 8 GiB | $0.0752 | $0.2256 |
 | AWS t3a.large (x86) | 2 / 8 GiB | $0.0850 | $0.2550 |
-| GCP e2-medium (shared CPU) | 2 / 4 GiB | $0.04316778 | $0.12950334 |
-| GCP e2-standard-2 | 2 / 8 GiB | $0.08633556 | $0.25900668 |
+| GCP e2-medium (shared CPU: 1 fractional vCPU) | 2 exposed / 4 GiB | $0.03350571 | $0.10051713 |
+| GCP e2-standard-2 | 2 / 8 GiB | $0.06701142 | $0.20103426 |
 
-Preferred qualification candidates: three AWS t4g.large after checking all
-images/AMIs support ARM, otherwise t3a.large; three GCP e2-standard-2.
-These are affordable candidates, not guaranteed capacity or a proven global
-cheapest choice. Measure reservations/pod requests and surviving two-node capacity;
-test 4 GiB alternatives only if those gates pass. Do not assume 2 GiB is sufficient.
+Start with the smallest plausible nodes: three AWS t4g.medium (Graviton) and
+three GCP e2-medium (2 vCPUs exposed, 1 fractional vCPU). The 2 GiB t4g.small or
+e2-small tiers are deliberately excluded: each
+zone must fit a synchronous database replica, one API and one worker, plus the
+node OS, Kubernetes and network agents. The declared app+database requests alone
+are about 0.9 GiB and limits total 2 GiB per zone before system overhead. This
+4 GiB choice is a qualification candidate, not a capacity guarantee. Measure
+actual allocatable memory, pressure, CPU throttling and two-node survivor capacity.
+Only move to t4g.large/e2-standard-2 if a recorded test demonstrates the 4 GiB
+candidate cannot pass; do not silently resize or reduce HA replicas.
 
-Including the $0.10/hour standard managed control-plane fee gives preferred
-node/control-plane subtotals of $0.3256/hour AWS and $0.35900668/hour GCP,
-approximately $0.16/$0.18 for 30 minutes at steady topology.
+Including the $0.10/hour standard managed control-plane fee gives candidate
+node/control-plane subtotals of $0.2128/hour AWS and $0.20051713/hour GCP,
+approximately $0.11/$0.10 for 30 minutes at steady topology. The 8 GiB fallbacks
+are approximately $0.3256/hour AWS and $0.30103426/hour GCP before other services.
 These are NOT complete run estimates: add disks, HA database, NAT/IPs/LBs, transfer,
 telemetry, Config Sync feature fees where applicable, queues/storage, registry,
 retained bootstrap and provisioning/deletion/surge-node time.
@@ -60,7 +66,6 @@ credit charges/throttling need explicit load-test treatment. Recheck pricing and
 regional/version availability before apply.
 
 Sources:
-- [Official AWS London EC2 price list](https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonEC2/current/eu-west-2/index.csv)
 - [GCP VM prices: London selection](https://cloud.google.com/products/compute/pricing/general-purpose)
 - [EKS pricing](https://aws.amazon.com/eks/pricing/)
 - [GKE pricing and feature fees](https://cloud.google.com/kubernetes-engine/pricing)
@@ -69,19 +74,42 @@ Sources:
 - [AWS NAT billing: partial hours round up](https://aws.amazon.com/vpc/pricing/)
 - [GCP NAT pricing](https://cloud.google.com/nat/pricing)
 
-## Cost safeguards and immediate teardown
+## Alerting, cost safeguards and immediate teardown
 
-Budget alerts are required. Track gross usage before trial credits alongside net
-charges; verify actual trial/service eligibility. Alerts are delayed billing
-signals, not guaranteed caps. The requested hard-cap protection remains an
-activation gate until coverage is verified for every selected billable service.
-Resource limits, deadlines and cleanup must not be called a monetary hard cap.
+Approved starting envelope: £5 gross usage per cloud run, £10 maximum across the
+first GCP and AWS attempts, and 60 minutes from first billable resource. This is
+a strict plan/no-go target, not a provider-guaranteed maximum charge. The complete
+architecture estimate must fit the cap with contingency before apply; do not
+silently raise it. Keep gross list-price usage visible separately from trial
+credits and net cash charges.
 
-Earlier £2/cloud/run, £0.50/£1/£2 alerts and one-hour lifetime remain unapproved
-proposals, not validated HA allowances. Agree complete cost estimate, currency,
-recipient and maximum lifetime before activation. Brief workload time does not
-mean instant provisioning/deletion; reserve cleanup time within the deadline.
-Refuse an over-budget plan rather than silently increase the allowance.
+Configure layered notifications before activation:
+
+- GCP project budget: actual gross-cost alerts at 25%, 50%, 75%, 90% and 100%,
+  plus forecast alerts at 75% and 100% where available; route to the user-provided
+  GCP lab mailbox through a verified Monitoring email channel.
+- AWS account budget: actual gross-cost alerts at 25%, 50%, 75%, 90% and 100%,
+  plus forecast alerts at 75% and 100% when forecast data exists; use a confirmed
+  SNS email subscription to the user-provided AWS lab mailbox.
+- The not-yet-built cloud lifecycle workflow must send notices (created, ready,
+  15 minutes to expiry, teardown started, teardown/audit passed or failed) to the
+  same provider-specific mailbox.
+- At 75% of the pre-run ceiling, stop optional tests and begin teardown. At 90%,
+  fail the run and force teardown. At expiry, the independent janitor deletes the
+  run even if the orchestrator is unavailable. Alert delivery failure is a
+  preflight failure, not a warning to ignore.
+
+Email values belong in private deployment configuration, not these public repos.
+Verify end-to-end delivery before provisioning. Billing notifications are delayed
+signals, not a real-time circuit breaker. GKE/Compute are not currently among
+Google's eligible spend-cap services; AWS Budgets may also report after usage.
+Therefore retain the independent wall-clock watchdog, run inventory and provider
+cleanup/audit. Resource limits, alerts, deadlines and cleanup must not be called
+a guaranteed monetary hard cap.
+
+Begin teardown no later than minute 40 and require independent inventory audit by
+minute 60. Brief workload time does not mean instant provisioning/deletion; include
+the entire setup and cleanup interval in the cost estimate.
 
 Capture evidence, then immediately delete on success, failure, cancellation or
 expiry. Keep external scoped inventory and independent cleanup capability.
@@ -90,18 +118,23 @@ versions, queues and run-scoped logs/images. Insufficient audit permissions mean
 incomplete cleanup evidence. Record eventual deletion and delayed billing separately.
 
 Private state/federation bootstrap currently survives normal lab teardown by design,
-but no retention exception is approved. Keep it recoverable through cleanup, then
-follow the agreed deletion/retention policy. No silently retained billable resources.
+but no retention exception is approved. This conflicts with the requirement that
+all resources be ephemeral; do not activate cloud runs until a teardown-safe state
+design or an explicit, bounded retention/deletion procedure is agreed. No silently
+retained billable resources.
 Portfolio evidence is sanitized historical data, not live control/credentials.
 
 ## Implementation status
 
-GCP Terraform defines a regional London cluster with one e2-standard-2 worker per
-zone. AWS renders three one-node zonal groups using AL2023 ARM for t4g.large or
-x86 for t3a.large. Terraform mock tests and pinned CRD schema checks cover these
-contracts. Cloud placement/admission, workload/database HA, networking, failover
-and spending protections still require implementation and live qualification.
-No cloud deployment or billing configuration is claimed by static tests.
+GCP Terraform defines a regional London cluster with one e2-medium worker per
+zone. AWS renders three one-node zonal groups using AL2023 ARM for t4g.medium or
+x86 for t3a.medium; the 8 GiB sizes are documented fallback only. Budget alert
+thresholds and private recipient inputs are implemented as configuration, but no
+cloud budget or email channel has been created or delivery tested. The approved
+recipients must be supplied through private deployment configuration. Resource
+fit, cloud placement/admission, workload/database HA, networking, failover and
+spending protections still require live qualification. No cloud deployment or
+billing configuration is claimed by static tests.
 
 Separate [hosted Kubernetes qualification](image-and-ha-qualification.md) passed
 three-instance PostgreSQL promotion, primary-worker loss, preservation of all 31

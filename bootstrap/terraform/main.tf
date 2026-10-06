@@ -9,6 +9,7 @@ resource "google_project_service" "bootstrap" {
     "iam.googleapis.com", "iamcredentials.googleapis.com",
     "sts.googleapis.com", "storage.googleapis.com",
     "cloudresourcemanager.googleapis.com",
+    "billingbudgets.googleapis.com", "monitoring.googleapis.com",
   ])
   service            = each.value
   disable_on_destroy = false
@@ -79,4 +80,69 @@ resource "google_project_iam_member" "approved_apply_roles" {
   project  = var.project_id
   role     = each.value
   member   = "serviceAccount:${google_service_account.ci.email}"
+}
+
+resource "google_monitoring_notification_channel" "cost_email" {
+  for_each     = var.enable_cost_alerts ? toset(["enabled"]) : toset([])
+  project      = var.project_id
+  display_name = "Portfolio lab budget email"
+  type         = "email"
+  labels       = { email_address = var.cost_alert_email }
+  depends_on   = [google_project_service.bootstrap]
+  lifecycle {
+    precondition {
+      condition     = can(regex("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$", var.cost_alert_email))
+      error_message = "Cost alerts require a valid private email input."
+    }
+  }
+}
+
+resource "google_billing_budget" "cost_alerts" {
+  for_each        = var.enable_cost_alerts ? toset(["enabled"]) : toset([])
+  billing_account = var.billing_account_id
+  display_name    = "Ephemeral portfolio lab gross cost"
+
+  budget_filter {
+    projects               = ["projects/${var.project_id}"]
+    credit_types_treatment = "EXCLUDE_ALL_CREDITS"
+  }
+
+  amount {
+    specified_amount {
+      currency_code = var.cost_budget_currency
+      units         = tostring(floor(var.cost_budget_amount))
+      nanos         = floor((var.cost_budget_amount - floor(var.cost_budget_amount)) * 1000000000)
+    }
+  }
+
+  dynamic "threshold_rules" {
+    for_each = [0.25, 0.5, 0.75, 0.9, 1.0]
+    content {
+      threshold_percent = threshold_rules.value
+      spend_basis       = "CURRENT_SPEND"
+    }
+  }
+  dynamic "threshold_rules" {
+    for_each = [0.75, 1.0]
+    content {
+      threshold_percent = threshold_rules.value
+      spend_basis       = "FORECASTED_SPEND"
+    }
+  }
+
+  all_updates_rule {
+    monitoring_notification_channels = [google_monitoring_notification_channel.cost_email["enabled"].name]
+    enable_project_level_recipients  = true
+  }
+
+  lifecycle {
+    precondition {
+      condition = (
+        can(regex("^[0-9]{6}-[0-9]{6}-[0-9]{6}$", var.billing_account_id)) &&
+        var.cost_budget_currency == "GBP" &&
+        var.cost_budget_amount > 0 && var.cost_budget_amount <= 5
+      )
+      error_message = "Enabled alerts require a billing account, GBP budget, and amount no greater than the approved £5 ceiling."
+    }
+  }
 }

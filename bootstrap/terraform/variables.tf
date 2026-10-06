@@ -23,3 +23,34 @@ variable "approved_project_roles" {
     error_message = "Use explicitly reviewed predefined roles; Owner and Editor are forbidden."
   }
 }
+
+variable "enable_cost_alerts" {
+  description = "Create the project-scoped gross-cost budget and private email channel."
+  type        = bool
+  default     = false
+}
+
+variable "billing_account_id" {
+  description = "Approved billing account for the project-scoped budget. Required when cost alerts are enabled."
+  type        = string
+  default     = ""
+}
+
+variable "cost_budget_currency" {
+  description = "Must be GBP so the configured monthly gross budget enforces the approved £5 amount."
+  type        = string
+  default     = ""
+}
+
+variable "cost_budget_amount" {
+  description = "Gross monthly budget in GBP; must be positive and no greater than £5."
+  type        = number
+  default     = 0
+}
+
+variable "cost_alert_email" {
+  description = "Private recipient for project budget notifications; keep tfvars/state private."
+  type        = string
+  sensitive   = true
+  default     = ""
+}
