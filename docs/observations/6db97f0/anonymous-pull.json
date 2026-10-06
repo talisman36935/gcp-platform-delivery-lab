@@ -1,0 +1,21 @@
+{
+  "image": "ghcr.io/talisman36935/report-workshop@sha256:16cff712ababba385a365716b22c4c40bb5e4b367deb5ad29a0daa19f0708789",
+  "verified_at": "2026-10-06T00:05:50.487164+00:00",
+  "verification": "anonymous index, platform manifests, config and all runtime layers downloaded and SHA256 checked; no account credential",
+  "platforms": [
+    "amd64",
+    "arm64"
+  ],
+  "verified_digests": [
+    "sha256:16cff712ababba385a365716b22c4c40bb5e4b367deb5ad29a0daa19f0708789",
+    "sha256:156507db932d333127fbc950a496e167bb21763df25120e3662a8beb8ea9fc07",
+    "sha256:fb293aba6cd4c374ad9eb971b95f0eafcef69c233b852eb5538118bd0727f510",
+    "sha256:9b96acf318e09ce70f00bca269beaefb951f0105ab8e4e347ee8660afd7ea6d5",
+    "sha256:c32345967322d6105dc98afd954fca3a3be605df6604d107a69d9bd15b80dfbb",
+    "sha256:8bf19c00c1fe8293a7a932a00e190cc21022005f92f0981567374490ff07e07d",
+    "sha256:7e1a51792609f05287932017ec9c30df02fa7fc8bc9972a8d2b9116b75cda9f0",
+    "sha256:fb39eb595276f378e80bbaffbc689627094ace67c56a95e69dbe4ef68eb79787"
+  ],
+  "download_bytes": 14313366,
+  "anonymous_pull_verified": true
+}

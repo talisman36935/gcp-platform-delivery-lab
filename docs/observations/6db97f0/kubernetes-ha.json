@@ -1,0 +1,32 @@
+{
+  "verification": "hosted-kind",
+  "source_revision": "6db97f0b0cac0739e79c2226710136d7bd346314",
+  "image": "ghcr.io/talisman36935/report-workshop@sha256:16cff712ababba385a365716b22c4c40bb5e4b367deb5ad29a0daa19f0708789",
+  "database_image": "ghcr.io/cloudnative-pg/postgresql:18.4@sha256:6138f19539304b585c6cafd1af82ca407f184139459a8e06f0880df4556d3588",
+  "operator_image": "ghcr.io/cloudnative-pg/cloudnative-pg:1.30.1@sha256:923c267ec29636db3bee20f993d0ec4973fa22998e1adad37da79e4d32b5bc07",
+  "started_at": "2026-10-05T23:57:09.013665+00:00",
+  "result": "failed",
+  "simulation": "three labelled workers on one host",
+  "cloud_provisioned": false,
+  "cloud_zone_failure_verified": false,
+  "primary_promotion": null,
+  "node_failure": null,
+  "baseline_jobs": [
+    "6cc787cbba4c6ea1728f12728cbe6f95",
+    "387ba2068174c61e129d81ab6d86d9e6",
+    "9ddc5eb3f95e51b47dca6449f02c9ea4",
+    "52da7e30097e40fbad8076eedf870309",
+    "7caf7c3802d9875c42b5dbc611e32f46"
+  ],
+  "fault_queue_jobs": [],
+  "pending_before_node_failure": 0,
+  "recovery_jobs": [],
+  "accepted_reports_preserved": false,
+  "cluster_deleted": true,
+  "errors": [
+    "CalledProcessError"
+  ],
+  "synchronous_standby_names": "ANY 1 (\"report-db-2\",\"report-db-3\",\"report-db-1\")",
+  "failed_stage": "primary-promotion",
+  "finished_at": "2026-10-06T00:01:29.675198+00:00"
+}

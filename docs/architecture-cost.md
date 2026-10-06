@@ -18,7 +18,7 @@ requirements, not inferred from a successful deployment.
   failover and metrics/logs/traces/profiles/dashboards.
 - Database HA requires a qualified replication/failover and storage design with
   measured recovery/data-loss criteria. Multiple nodes/API replicas do not prove
-  end-to-end HA; the current single PostgreSQL deployment is not HA.
+  end-to-end HA; the single-PostgreSQL Compose baseline is not HA.
 - Keep networking/NAT, ingress/load balancing and policy components needed to
   substantiate the architecture; cost them rather than remove them by default.
   Avoid gratuitous duplicate clusters. Cloud Deploy and CAPI pivot remain later
@@ -102,3 +102,9 @@ x86 for t3a.large. Terraform mock tests and pinned CRD schema checks cover these
 contracts. Cloud placement/admission, workload/database HA, networking, failover
 and spending protections still require implementation and live qualification.
 No cloud deployment or billing configuration is claimed by static tests.
+
+Separate [hosted Kubernetes qualification](image-and-ha-qualification.md) passed
+three-instance PostgreSQL promotion, primary-worker loss, preservation of all 31
+golden reports and named-cluster cleanup. Public AMD64/ARM64 image content and
+native ARM execution are verified. Simulated zones/local-path disks on one runner
+do not qualify London cloud zones, CSI, IAM, capacity or cloud spending protection.

@@ -87,6 +87,13 @@ published image assertion. The operator/CRD artifact is checksum-pinned for the
 served-schema check; signature trust, CEL/webhook admission and runtime behavior
 remain separate gates. No operator is installed by these renderers.
 
+The separate [hosted image/HA qualification](image-and-ha-qualification.md) now
+installs the pinned operator and an actual dual-architecture PostgreSQL image.
+It passed primary promotion, primary-worker loss with outstanding jobs, golden
+report preservation and cluster cleanup. This uses local-path storage and three
+simulated zones on one runner; cloud CSI/admission/network/zone qualification
+remains outstanding. The Compose baseline still uses a single PostgreSQL instance.
+
 Activation order: platform CRDs/operator and storage policy, database readiness and
 secret generation, migration completion, app rollout, then workload assertions.
 Qualify operator replication/control-plane egress and app database/DNS/telemetry
