@@ -1,0 +1,70 @@
+{
+  "verification": "hosted-kind",
+  "source_revision": "0e0a6133a18e4cfb10aae4defabd5b8f52ec69b5",
+  "image": "ghcr.io/talisman36935/report-workshop@sha256:505f63c5428ef76ccbd39389b623962f8abc3bc72e73bc73b1b5cfcf70bcc23a",
+  "database_image": "ghcr.io/cloudnative-pg/postgresql:18.4@sha256:6138f19539304b585c6cafd1af82ca407f184139459a8e06f0880df4556d3588",
+  "operator_image": "ghcr.io/cloudnative-pg/cloudnative-pg:1.30.1@sha256:923c267ec29636db3bee20f993d0ec4973fa22998e1adad37da79e4d32b5bc07",
+  "started_at": "2026-10-06T01:21:18.204990+00:00",
+  "result": "passed",
+  "simulation": "three labelled workers on one host",
+  "cloud_provisioned": false,
+  "cloud_zone_failure_verified": false,
+  "primary_promotion": {
+    "old": "report-db-1",
+    "new": "report-db-2",
+    "seconds": 59.793,
+    "fault": "primary pod deletion with 30-second grace"
+  },
+  "node_failure": {
+    "node": "portfolio-ha-worker2",
+    "old_primary": "report-db-2",
+    "new_primary": "report-db-1",
+    "seconds": 83.762,
+    "surviving_api_replicas": 2,
+    "surviving_worker_replicas": 2
+  },
+  "baseline_jobs": [
+    "e5bf98551e59d84d5213ad13aa429da0",
+    "307900fbeb121e2c5e2cb9b03a88fd00",
+    "8a387a78b8a51f332aee8d7499496a7a",
+    "7f8034d33bf756cfcafe4b80378f5a92",
+    "da1ae8070914319acbe7924c83adad2b"
+  ],
+  "fault_queue_jobs": [
+    "a57fa212b6316876c496afdb251871e5",
+    "fbe07e0c0ed29745aec2c5683eb042eb",
+    "20767c42d292b853a25272d9ce4e1bd6",
+    "ccb4836019ece2caa795b79b64a7d608",
+    "f5b91537aabd5938f40c6dc3fbd739bc",
+    "51be3a5f9d3bcab82e9b07f5303889be",
+    "f719eb36d70024758779f5f5fc08ad11",
+    "ec7ca82bd265dc29434b43b72513f767",
+    "8bb9cafdd0bcd43e6bebd28acebf0481",
+    "ceb3a8c5a414def85ccd66b32e784c22",
+    "4889c811d0e36114a1bd54db52f65a65",
+    "088eeaabada74a97a240c83cecaab9da",
+    "cd27fd844368ce83ae26cd77c96f7e6c",
+    "4bac3e6b04ffa755741894f703cbe009",
+    "27cdbc0e501fc96341885200dceaf5bc",
+    "e4be2b6c6446da8d1b557ee779f7e5ec",
+    "dc196a1ad0aebec2d2e6e801014c6bd4",
+    "7da79dc10f2a32bceee2f4b42b45d88d",
+    "00c149760e71bee40dcb1f19e66733e0",
+    "dc2fc9b52878efb4a8712eb937f3a087"
+  ],
+  "pending_before_node_failure": 20,
+  "recovery_jobs": [
+    "a3e01441fb24eb47af8f981bf5d6bb5e",
+    "53b2f168b8cfa715444aabbddcbc8460",
+    "a7462f5754d90bc81af21d67b6b12034",
+    "f912e8c04d69c3cba972548d9c6091fd",
+    "33063a5a69860132aa1d670be51685ec",
+    "3754b509a8e9e533ce13ee99724e7ca5"
+  ],
+  "accepted_reports_preserved": true,
+  "cluster_deleted": true,
+  "errors": [],
+  "synchronous_standby_names": "ANY 1 (\"report-db-2\",\"report-db-3\",\"report-db-1\")",
+  "test_completion_gate_removed": true,
+  "finished_at": "2026-10-06T01:27:44.602355+00:00"
+}

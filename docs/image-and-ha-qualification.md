@@ -1,5 +1,30 @@
 # Image release and hosted HA qualification
 
+## Current adapter-capable release — 2026-10-06
+
+Source `0e0a6133a18e4cfb10aae4defabd5b8f52ec69b5` passed full Validate
+[37398071004](https://github.com/talisman36935/gcp-platform-delivery-lab/actions/runs/37398071004).
+[Release 37398470462](https://github.com/talisman36935/gcp-platform-delivery-lab/actions/runs/37398470462)
+passed publication, native ARM migration/API/worker golden smoke and hosted
+Kubernetes HA for
+`ghcr.io/talisman36935/report-workshop@sha256:505f63c5428ef76ccbd39389b623962f8abc3bc72e73bc73b1b5cfcf70bcc23a`.
+The [release record](observations/0e0a613/image-release.json) declares schema-check
+and cloud-queue-object-v1 capabilities. The image includes linked dependency
+licenses/notices. [Anonymous verification](observations/0e0a613/anonymous-pull.json)
+downloaded and SHA256-checked both platform manifests, configs and all runtime
+layers (28,915,115 bytes) without account credentials.
+
+The [runtime observation](observations/0e0a613/kubernetes-ha.json) records primary
+promotion in 59.793 seconds and primary-worker loss recovery in 83.762 seconds,
+including the respective readiness/access checks. Twenty jobs were outstanding
+at the node fault; all 31 baseline/queued/recovery reports remained golden. Two
+API/worker replicas survived, full readiness returned, the test completion gate
+was removed and cluster deletion passed. New schema-check init gates were used.
+These are simulated-zone process tests on one hosted machine, not cloud HA or
+live cloud-adapter/GitOps qualification. The earlier release below remains history.
+
+## Publishing contract and earlier qualified release
+
 The manually dispatched Publish and qualify HA workflow accepts only a reviewed
 main SHA with a successful Validate push run. It builds the source into a small
 non-root multi-command image for AMD64 and ARM64 using native cross-compilation,
@@ -30,7 +55,7 @@ Recheck public content with bounded downloads (32 MiB per blob, 64 MiB total):
 
 ```sh
 python3 workload/deploy/verify_anonymous_image.py \
-  --image ghcr.io/talisman36935/report-workshop@sha256:ff32688b7c8f2764ea46a32e8813d8e45585615d494c116324dfc5f2b7307d9f \
+  --image ghcr.io/talisman36935/report-workshop@sha256:505f63c5428ef76ccbd39389b623962f8abc3bc72e73bc73b1b5cfcf70bcc23a \
   --output output/anonymous-pull.json
 ```
 

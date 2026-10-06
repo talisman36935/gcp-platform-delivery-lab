@@ -1,5 +1,24 @@
 # Implementation record — 2026-10-03
 
+## Continuation — 2026-10-06
+
+The ADRs below preserve the initial implementation state. They are not the current
+completion checklist. Cloud adapters now implement Pub/Sub/GCS and SQS/S3 behind
+application ports, with leased outbox publication, immutable attempt/hash objects,
+fenced reference/JSONB completion and acknowledgement after commit. HTTP still
+reads JSONB. Publication and consumption run independently. Actual SDK protocol
+doubles and real PostgreSQL tests pass; live cloud services are unqualified.
+See [adapter contracts](cloud-adapters.md) and the
+[exact-source validation audit](observations/0e0a613/adapter-qualification.md).
+
+Opt-in Config Sync/Flux profiles add disjoint ownership, schema readiness gates
+and restricted application RBAC. They deliberately remain blocked pending provider
+network/identity qualification; existing GitOps roots have not been switched.
+See [delivery boundaries](gitops-delivery.md). Hosted image/HA evidence is recorded
+separately in [image qualification](image-and-ha-qualification.md).
+Independent teardown/TTL, approved cost protection, live cloud HA, full telemetry
+and durable portfolio ingestion remain incomplete. No cloud resources were created.
+
 ## ADR 001: two repositories, one application source
 
 The initial build stays within the two requested public repositories. This repo's
