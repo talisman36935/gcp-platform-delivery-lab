@@ -1,5 +1,28 @@
 # Image release and hosted HA qualification
 
+## Poll-based readiness release — 2026-10-06
+
+Source `3b1abf3b791b4ab95f852c860786ca91d8c0a381` passed hosted Validate
+[37517856995](https://github.com/talisman36935/gcp-platform-delivery-lab/actions/runs/37517856995)
+and exact-source publish/qualification
+[37518413015](https://github.com/talisman36935/gcp-platform-delivery-lab/actions/runs/37518413015).
+The immutable index is
+`ghcr.io/talisman36935/report-workshop@sha256:dfba95425f82b619987f307e63e2e2720f9395a5a2c7836ec2d2a25f7d398d23`.
+Native ARM migration, API, worker readiness and golden-report smoke passed.
+Kubernetes primary promotion took 59.859 seconds; simulated worker-node loss,
+database promotion and surviving application readiness took 92.901 seconds.
+Two API and two worker replicas survived. Twenty accepted jobs were outstanding
+at the fault; baseline, queued and recovery reports were preserved. The completion
+gate was removed and the named cluster was deleted.
+
+The anonymous AMD64/ARM64 verifier downloaded and SHA256-checked the index,
+platform manifests, configs and all runtime layers without credentials
+([28,946,103 bytes](observations/3b1abf3/anonymous-pull.json)). The hosted
+qualification and independent pull evidence are summarized in
+[observations/3b1abf3/qualification.md](observations/3b1abf3/qualification.md).
+Earlier failures are preserved there too; they are not overwritten or counted as
+passes. This remains a one-host kind simulation, not cloud-zone/CSI/IAM evidence.
+
 ## Workload-identity-separated release — 2026-10-06
 
 Source `32c98ffd9cacb528c2d017f7ea39b54536ca2211` passed GCP Validate
