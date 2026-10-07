@@ -64,7 +64,14 @@ func run(ctx context.Context) error {
 	backend := os.Getenv("WORK_BACKEND")
 	metrics.RequireDispatchHealth(mode == "worker" && backend != "" && backend != "local")
 	metrics.SetVariant(analysisVariant)
-	traces, err := telemetry.NewTraces(ctx, mode, revision, os.Getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"))
+	traces, err := telemetry.NewTraces(
+		ctx,
+		mode,
+		revision,
+		os.Getenv("DEPLOYMENT_ENVIRONMENT_NAME"),
+		os.Getenv("WORKSHOP_RUN_ID"),
+		os.Getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"),
+	)
 	if err != nil {
 		return err
 	}

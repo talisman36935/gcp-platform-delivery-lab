@@ -65,6 +65,13 @@ provider overlay. The generic profile does **not** substitute allow-all egress o
 pretend a local render is runnable in either cloud. IAM and network qualification
 must precede the source-root change.
 
+The dormant profile does not enable an OTLP exporter by default. If a reviewed
+provider overlay enables tracing, it must explicitly set
+`DEPLOYMENT_ENVIRONMENT_NAME` to the actual non-local environment and provide a
+unique `WORKSHOP_RUN_ID`; application startup rejects missing or malformed identity
+when trace export is enabled. Never carry the local Compose identity defaults into
+cloud observations.
+
 Unit tests prove disjoint identities, immutable release inputs, no legacy capability
 fallback, schema init gates, owner/backend matching and limited application RBAC.
 Focused renderer tests also require distinct API/worker/migration identities and

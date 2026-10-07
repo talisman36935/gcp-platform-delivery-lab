@@ -12,6 +12,7 @@ Use a clean checkout, Docker Compose, Go 1.27.1 and Python 3. Extra localhost po
 
 ```sh
 export APP_REVISION="$(git rev-parse HEAD)"
+export WORKSHOP_RUN_ID="local-$(date -u +%Y%m%dT%H%M%SZ)"
 docker compose -f compose.yaml -f compose.tracing.yaml --profile observability up --build -d
 python3 smoke.py
 python3 evidence/trace_profile.py --revision "$APP_REVISION"
@@ -45,8 +46,15 @@ the ignored output directory until explicitly removed.
 
 Application code uses a small observer port. The telemetry adapter owns SDK,
 exporter, resource identity, HTTP instrumentation and repository wrapping.
-The durable record stores only W3C traceparent; baggage, authorization headers,
-raw URLs, document contents and database error text are excluded.
+The optional tracing profile sets `DEPLOYMENT_ENVIRONMENT_NAME=local` and uses
+`WORKSHOP_RUN_ID` (with a local fallback for convenience). When an OTLP endpoint
+is configured, both values are required and validated before export; the resource
+includes `deployment.environment.name` and `workshop.run_id` alongside service
+name/version. Cloud profiles must supply an explicit non-local environment and a
+unique run ID; local defaults are not valid cloud evidence. When the endpoint is
+unset, tracing remains a no-op and does not require these values. The durable record
+stores only W3C traceparent; baggage, authorization headers, raw URLs, document
+contents and database error text are excluded.
 
 The HTTP span parents a transaction span whose context is stored atomically
 with the job/outbox. A worker attempt continues that parent after dispatch,

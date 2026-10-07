@@ -3,9 +3,13 @@ services:
   api:
     environment:
       OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://collector:4318/v1/traces
+      DEPLOYMENT_ENVIRONMENT_NAME: local
+      WORKSHOP_RUN_ID: "${WORKSHOP_RUN_ID:-local-compose}"
   worker:
     environment:
       OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://collector:4318/v1/traces
+      DEPLOYMENT_ENVIRONMENT_NAME: local
+      WORKSHOP_RUN_ID: "${WORKSHOP_RUN_ID:-local-compose}"
       PROFILE_ENABLED: "true"
   collector:
     image: otel/opentelemetry-collector-contrib:0.161.0@sha256:fd328de2552466ad78385e1b1289c3f2402b1c45f265b252aab1955b42845ac1

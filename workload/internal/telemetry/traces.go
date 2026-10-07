@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"time"
+	"unicode/utf8"
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -26,9 +27,13 @@ type Traces struct {
 	provider *sdktrace.TracerProvider
 }
 
-func NewTraces(ctx context.Context, role, revision, endpoint string) (*Traces, error) {
+func NewTraces(ctx context.Context, role, revision, environment, runID, endpoint string) (*Traces, error) {
 	if endpoint == "" {
 		return &Traces{tracer: noop.NewTracerProvider().Tracer("report-workshop")}, nil
+	}
+	traceResource, err := newTraceResource(role, revision, environment, runID)
+	if err != nil {
+		return nil, err
 	}
 	parsed, err := url.Parse(endpoint)
 	if err != nil || parsed.Host == "" || parsed.User != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") {
@@ -41,13 +46,40 @@ func NewTraces(ctx context.Context, role, revision, endpoint string) (*Traces, e
 	provider := sdktrace.NewTracerProvider(
 		sdktrace.WithBatcher(exporter, sdktrace.WithBatchTimeout(200*time.Millisecond), sdktrace.WithMaxQueueSize(1024), sdktrace.WithMaxExportBatchSize(128)),
 		sdktrace.WithSampler(sdktrace.ParentBased(sdktrace.AlwaysSample())),
-		sdktrace.WithResource(resource.NewSchemaless(
-			attribute.String("service.name", "report-workshop-"+role),
-			attribute.String("service.version", revision),
-			attribute.String("deployment.environment.name", "local"),
-		)),
+		sdktrace.WithResource(traceResource),
 	)
 	return &Traces{tracer: provider.Tracer("report-workshop"), provider: provider}, nil
+}
+
+func newTraceResource(role, revision, environment, runID string) (*resource.Resource, error) {
+	if !validResourceIdentity(environment) {
+		return nil, errors.New("trace deployment environment is missing or invalid")
+	}
+	if !validResourceIdentity(runID) {
+		return nil, errors.New("trace run ID is missing or invalid")
+	}
+	return resource.NewSchemaless(
+		attribute.String("service.name", "report-workshop-"+role),
+		attribute.String("service.version", revision),
+		attribute.String("deployment.environment.name", environment),
+		attribute.String("workshop.run_id", runID),
+	), nil
+}
+
+func validResourceIdentity(value string) bool {
+	if value == "" || len(value) > 64 || !utf8.ValidString(value) {
+		return false
+	}
+	for index, char := range value {
+		isAlphaNumeric := char >= 'a' && char <= 'z' || char >= 'A' && char <= 'Z' || char >= '0' && char <= '9'
+		if index == 0 && !isAlphaNumeric {
+			return false
+		}
+		if !isAlphaNumeric && char != '.' && char != '_' && char != '-' {
+			return false
+		}
+	}
+	return true
 }
 
 func (t *Traces) Shutdown() {
