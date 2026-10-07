@@ -1,5 +1,28 @@
 # Image release and hosted HA qualification
 
+## Explicit deployment identity release — 2026-10-07
+
+Source `2202e13962914f71e56b146ff7632282b9d04492` passed Validate
+[37687488181](https://github.com/talisman36935/gcp-platform-delivery-lab/actions/runs/37687488181)
+and Publish and qualify HA
+[37687979581](https://github.com/talisman36935/gcp-platform-delivery-lab/actions/runs/37687979581).
+The immutable AMD64/ARM64 index is
+`ghcr.io/talisman36935/report-workshop@sha256:3c08b2754404fdc14dda81ee4e0bc9f9f640a3223ccd89988f19e74250c41816`.
+Native ARM migration/API/worker golden smoke passed. Hosted kind recorded primary
+promotion in 59.675 seconds, then workload-node loss, database promotion and
+surviving-application recovery in 86.69 seconds. Twenty accepted jobs were pending
+at node loss; two API and two worker replicas survived, accepted reports remained
+preserved, the test completion gate was removed, and the named cluster was deleted.
+An independent anonymous verifier SHA256-checked the index, both platform manifests,
+configs and runtime layers (28,921,673 bytes).
+
+The exact sanitized publication, anonymous-pull and hosted-kind records are linked
+from [the source-scoped qualification observation](observations/2202e13/qualification.md).
+The publication record preserves the state at publish time; subsequent checks are
+separate evidence. This is a one-host, three-simulated-worker experiment: no cloud
+was provisioned, no physical/cloud zone failure was tested, and this is not AWS/EKS
+qualification or signature verification.
+
 ## Poll-based readiness release — 2026-10-06
 
 Source `3b1abf3b791b4ab95f852c860786ca91d8c0a381` passed hosted Validate

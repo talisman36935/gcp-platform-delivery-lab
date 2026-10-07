@@ -1,0 +1,19 @@
+{
+  "source_revision": "2202e13962914f71e56b146ff7632282b9d04492",
+  "image": "ghcr.io/talisman36935/report-workshop@sha256:3c08b2754404fdc14dda81ee4e0bc9f9f640a3223ccd89988f19e74250c41816",
+  "capabilities": [
+    "schema-check",
+    "cloud-queue-object-v1"
+  ],
+  "platform_manifests": {
+    "amd64": "sha256:ec0c13f5567697c0a3622bd6f86955f5eac3b859e978e0978e63423c1cb7dd5f",
+    "arm64": "sha256:11e53077c9f40f0c29b349d73df7bfe76ddfb20001d364e2c9a6b849ca72ea9b"
+  },
+  "build_attestation_manifests": [
+    "sha256:4885f5a61482349fc1557e39292871b2ebf741ff64c1fe5f5edb5ae36665726a",
+    "sha256:ed6b856225c7e3b123e8c8ae6cc1b560cb0a7abbf5816b0570c92148410084d0"
+  ],
+  "signature_verified": false,
+  "anonymous_pull_verified": false,
+  "runtime_qualification": "pending"
+}
